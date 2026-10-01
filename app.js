@@ -89,6 +89,92 @@ filters.forEach(button => button.addEventListener('click', () => {
   cards.forEach(card => { card.hidden = selection !== 'all' && !card.dataset.category.split(' ').includes(selection); });
 }));
 
+/* ---------- Project rail ----------
+   A scroll-snap carousel: the centred card is the active one. Snapping
+   handles the movement, so this only tracks which card is nearest the
+   centre and mirrors that into the counter and the arrow buttons. */
+const rail = document.getElementById('project-grid');
+const railPrev = document.getElementById('rail-prev');
+const railNext = document.getElementById('rail-next');
+const railCount = document.getElementById('rail-count');
+let railIndex = 0;
+
+const visibleCards = () => [...rail.querySelectorAll('.project-card')].filter(c => !c.hidden);
+
+/* Rect-delta rather than offsetLeft: the rail is not the offsetParent of its
+   cards, so offsetLeft resolved against a further ancestor and every scroll
+   landed in the wrong place — the arrows did nothing. */
+const scrollToCard = (card, behavior = 'smooth') => {
+  if (!card) return;
+  const railRect = rail.getBoundingClientRect();
+  const cardRect = card.getBoundingClientRect();
+  const delta = (cardRect.left - railRect.left) - (rail.clientWidth - cardRect.width) / 2;
+  rail.scrollBy({ left: delta, behavior });
+};
+
+const setActiveCard = index => {
+  const list = visibleCards();
+  // Clear across every card, not just visible ones: a card hidden by a filter
+  // would otherwise keep a stale is-current and report a 0x0 rect.
+  rail.querySelectorAll('.project-card').forEach(card => card.classList.remove('is-current'));
+  if (!list.length) {
+    railCount.textContent = '00 / 00';
+    railPrev.disabled = railNext.disabled = true;
+    return;
+  }
+  railIndex = Math.max(0, Math.min(index, list.length - 1));
+  list[railIndex].classList.add('is-current');
+  railCount.textContent = `${String(railIndex + 1).padStart(2, '0')} / ${String(list.length).padStart(2, '0')}`;
+  railPrev.disabled = railIndex === 0;
+  railNext.disabled = railIndex === list.length - 1;
+};
+
+// Nearest-to-centre wins, so the active card follows a real drag or flick.
+let railQueued = false;
+const syncRail = () => {
+  railQueued = false;
+  const list = visibleCards();
+  if (!list.length) { setActiveCard(0); return; }
+  const railBox = rail.getBoundingClientRect();
+  const centre = railBox.left + rail.clientWidth / 2;
+  let best = 0;
+  let bestDistance = Infinity;
+  list.forEach((card, i) => {
+    const box = card.getBoundingClientRect();
+    const d = Math.abs(box.left + box.width / 2 - centre);
+    if (d < bestDistance) { bestDistance = d; best = i; }
+  });
+  setActiveCard(best);
+};
+
+const queueRail = () => {
+  if (railQueued) return;
+  railQueued = true;
+  requestAnimationFrame(syncRail);
+};
+
+rail.addEventListener('scroll', queueRail, { passive: true });
+rail.addEventListener('keydown', event => {
+  if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+  event.preventDefault();
+  scrollToCard(visibleCards()[railIndex + (event.key === 'ArrowRight' ? 1 : -1)]);
+});
+
+railPrev.addEventListener('click', () => scrollToCard(visibleCards()[railIndex - 1]));
+railNext.addEventListener('click', () => scrollToCard(visibleCards()[railIndex + 1]));
+
+// A filter change can hide the active card, so re-centre on what is left.
+filters.forEach(button => button.addEventListener('click', () => {
+  setTimeout(() => {
+    const list = visibleCards();
+    setActiveCard(0);
+    scrollToCard(list[0], 'auto');
+  }, 0);
+}));
+
+setActiveCard(0);
+requestAnimationFrame(() => scrollToCard(visibleCards()[0], 'auto'));
+
 /* ---------- Contextual header ----------
    While the work section is on screen the pill swaps its nav links for the
    project filters. Both filter groups stay in sync because the handler above

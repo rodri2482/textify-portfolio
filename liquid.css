@@ -165,6 +165,129 @@ main section[id],section[id]{scroll-margin-top:124px}
 }
 
 /* ============================================================
+   Project rail — centred square, neighbours peeking
+   ------------------------------------------------------------
+   A horizontal scroll-snap carousel rather than a JS transform
+   coverflow: snapping gives momentum, touch and keyboard
+   scrolling for free, and the cards stay real links.
+   Every card is a fixed square; the centred one is scaled up with
+   `transform` only, so promoting it never reflows the rail and
+   the scroll position never jitters.
+   ============================================================ */
+.rail-nav{display:flex;align-items:center;gap:14px;justify-content:center;margin:0 auto clamp(18px,2.5vw,28px)}
+.rail-btn{
+  display:grid;place-items:center;
+  width:42px;height:42px;border-radius:999px;
+  border:1px solid rgba(255,255,255,.16);
+  background:rgba(255,255,255,.08);
+  -webkit-backdrop-filter:blur(18px) saturate(180%);
+  backdrop-filter:blur(18px) saturate(180%);
+  color:var(--ink);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.24), 0 10px 26px -14px rgba(0,0,0,.7);
+  transition:background .25s,transform .25s,opacity .25s;
+}
+.rail-btn:hover:not(:disabled){background:rgba(255,255,255,.16);transform:translateY(-2px)}
+.rail-btn:disabled{opacity:.32;cursor:default}
+.rail-count{font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;color:var(--muted)}
+
+.work-section .project-grid{
+  --rail-card:clamp(190px,21vw,290px);
+  /* Symmetric half-viewport padding so the first and last cards can actually
+     reach the centre. Without it they sit hard against the edge, "next" has
+     nowhere to scroll, and the arrows appeared to do nothing. */
+  --rail-pad:calc(50% - var(--rail-card) / 2);
+  display:flex;
+  align-items:center;
+  gap:clamp(14px,1.8vw,26px);
+  overflow-x:auto;
+  overscroll-behavior-x:contain;
+  scroll-snap-type:x mandatory;
+  padding-inline:max(20px, var(--rail-pad));
+  padding-block:clamp(18px,2.5vw,34px);
+  scrollbar-width:none;
+  -ms-overflow-style:none;
+  perspective:1600px;
+}
+.work-section .project-grid::-webkit-scrollbar{display:none}
+
+.work-section .project-card{
+  flex:0 0 auto;
+  width:var(--rail-card);
+  aspect-ratio:1/1;
+  margin:0;
+  padding:0;
+  scroll-snap-align:center;
+  opacity:.42;
+  transform:scale(.84) rotateY(9deg);
+  transform-origin:center;
+  transition:transform .55s cubic-bezier(.2,.7,.1,1),opacity .45s ease;
+}
+.work-section .project-card.is-current{
+  opacity:1;
+  transform:scale(1.3) rotateY(0deg);
+  z-index:2;
+}
+/* the editorial stagger from the grid layout has no meaning on a rail */
+.work-section .project-card:nth-child(even){padding-top:0}
+
+/* Square the artwork and pin the caption inside the frame */
+.work-section .project-open{
+  position:relative;
+  width:100%;
+  height:100%;
+  aspect-ratio:1/1;
+  border-radius:var(--glass-r-lg);
+  overflow:hidden;
+}
+.work-section .project-art,
+.work-section .project-art.real-art{
+  height:100%;
+  aspect-ratio:1/1;
+  border-radius:var(--glass-r-lg);
+}
+.work-section .project-meta{
+  position:absolute;
+  left:14px;right:14px;bottom:14px;
+  margin:0;
+  padding:13px 15px;
+}
+.work-section .project-card:not(.is-current) .project-meta{opacity:0;transition:opacity .35s}
+.work-section .project-card:hover .project-meta,
+.work-section .project-card:focus-within .project-meta{opacity:1}
+
+/* The old art title was sized for a tall 4:5 card; on a square it overflows
+   and reads as clipped debris on the peeking cards. Show it on the centred
+   card only, at a size the square can hold. */
+.work-section .real-art-title{
+  font-size:clamp(24px,2.6vw,44px);
+  left:18px;bottom:108px;
+  transition:opacity .4s ease;
+}
+.work-section .project-card:not(.is-current) .real-art-title{opacity:0}
+.work-section .art-corner{display:none}
+
+@media(max-width:900px){
+  .work-section .project-grid{padding-inline:18px;gap:12px;perspective:none}
+  .work-section .project-card{width:min(66vw,260px);transform:scale(.9) rotateY(0deg)}
+  .work-section .project-card.is-current{transform:scale(1)}
+  .work-section .project-card:not(.is-current) .project-meta{opacity:1}
+  /* Four filters will not fit a 390px pill, so let the chips scroll on one
+     line rather than wrapping and breaking the capsule. */
+  .work-section .filter-bar{
+    flex-wrap:nowrap;
+    max-width:calc(100vw - 36px);
+    overflow-x:auto;
+    scrollbar-width:none;
+    -webkit-overflow-scrolling:touch;
+  }
+  .work-section .filter-bar::-webkit-scrollbar{display:none}
+  .work-section .filter{white-space:nowrap;flex:0 0 auto}
+}
+@media(max-width:480px){
+  .work-section .project-card{width:min(74vw,240px)}
+}
+
+/* ============================================================
    Dark navy theme
    ------------------------------------------------------------
    The base canvas moves from warm paper to deep navy so that the
