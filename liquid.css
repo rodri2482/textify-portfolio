@@ -123,15 +123,23 @@
 .site-header .menu-toggle span{background:#fff}
 
 /* Clear the floating pill */
-main{padding-top:76px}
-.hero-v2{min-height:min(880px,calc(100svh - 76px));padding-top:26px}
-main section[id],section[id]{scroll-margin-top:118px}
+/* Clear the floating pill without leaving a gap.
+   An earlier `main{padding-top:76px}` opened a strip of raw body background
+   above the hero, which met the hero's own darker gradient and read as a
+   lighter full-width band behind the pill. The pill now floats directly over
+   the hero, and each first section pads itself instead. */
+main{padding-top:0}
+.hero-v2{min-height:min(880px,calc(100svh - 34px));padding-top:118px}
+main section[id],section[id]{scroll-margin-top:124px}
+.cs-intro{padding-top:132px}
 
 @media(max-width:900px){
   .site-top .site-header{padding:6px 8px 6px 16px;min-height:48px}
   .site-header .desktop-nav{display:none}
-  main{padding-top:64px}
-  .hero-v2{min-height:0}
+  main{padding-top:0}
+  .hero-v2{min-height:0;padding-top:104px}
+  .cs-intro{padding-top:112px}
+  main section[id],section[id]{scroll-margin-top:104px}
 }
    /* ---------- Contextual header: nav links morph into the filters ----------
    Desktop only — at mobile widths the four filters plus the wordmark will not
