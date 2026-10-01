@@ -132,6 +132,7 @@ const head = (p, depth) => `<!doctype html>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Playfair+Display:ital,wght@1,500;1,600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="${depth}styles.css">
   <link rel="stylesheet" href="${depth}v2.css">
+  <link rel="stylesheet" href="${depth}liquid.css">
   <script src="${depth}app.js" defer></script>
 </head>
 <body class="cs-page">
@@ -144,7 +145,8 @@ const head = (p, depth) => `<!doctype html>
       </nav>
       <a class="header-cta" href="${depth}index.html#contact">Start a project <span aria-hidden="true">↗</span></a>
       <button class="menu-toggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-menu"><span></span><span></span></button>
-    </div>
+  </div>
+      <a class="social-fab" href="https://www.linkedin.com/in/testimony-akinbinu-3198b1413/" target="_blank" rel="noopener noreferrer" aria-label="Textify on LinkedIn (opens in a new tab)"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.34V9h3.42v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13zM7.12 20.45H3.55V9h3.57v11.45z"/></svg></a>
   </header>
   <nav class="mobile-menu" id="mobile-menu" aria-label="Mobile navigation" hidden>
     <a href="${depth}index.html#work">Work</a><a href="${depth}index.html#services">Services</a><a href="${depth}index.html#approach">Approach</a><a href="${depth}index.html#about">About</a>
@@ -154,7 +156,7 @@ const head = (p, depth) => `<!doctype html>
   <div class="menu-backdrop" id="menu-backdrop" hidden></div>
 
   <main id="main" class="cs-main">
-    <section class="cs-intro">
+    <section class="story cs-intro">
       <div class="wrap">
         <a class="cs-back" href="${depth}index.html#work"><span aria-hidden="true">←</span> All work</a>
         <div class="cs-title-grid">
@@ -176,7 +178,7 @@ const head = (p, depth) => `<!doctype html>
       <img src="${depth}assets/${p.image}" alt="${p.title} ${p.kicker.toLowerCase()} campaign imagery for Textify" fetchpriority="high">
     </figure>
 
-    <section class="cs-body">
+    <section class="story cs-body">
       <div class="wrap cs-body-grid">
         <div class="cs-scope">
           <p class="cs-label">Scope</p>
@@ -192,7 +194,7 @@ ${p.scope.map(s => `            <li>${s}</li>`).join('\n')}
       </div>
     </section>
 
-    <section class="cs-pair">
+    <section class="story cs-pair">
       <div class="wrap cs-pair-grid">
         <figure class="cs-tile">
           <span class="cs-tile-crop${p.secondImage ? '' : ' cs-tile-crop--detail'}"><img src="${depth}assets/${p.secondImage || p.image}" alt="${p.title} ${p.secondImage ? 'storefront presentation' : 'product detail'}" loading="lazy"></span>
@@ -215,13 +217,13 @@ ${p.scope.map(s => `            <li>${s}</li>`).join('\n')}
       </div>
     </section>
 
-    <section class="cs-band">
+    <section class="story cs-band">
       <div class="wrap">
         <p class="cs-statement">${p.statement}</p>
       </div>
     </section>
 
-    <section class="cs-next">
+    <section class="story cs-next">
       <div class="wrap cs-next-grid">
         <div>
           <p class="cs-label">Next project</p>

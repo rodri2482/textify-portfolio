@@ -1,0 +1,655 @@
+/* ============================================================
+   Liquid Glass layer — additive, loaded last
+   ------------------------------------------------------------
+   Everything here is an override on top of styles.css + v2.css.
+   To revert the whole aesthetic, delete the single
+   <link rel="stylesheet" href="liquid.css"> line. Nothing else
+   needs to change.
+
+   NOTE ON DIRECTION: this supersedes the "Architectural Planar
+   Depth" rule in DESIGN.md (no blurs, no shadows, 0px radius).
+   It is kept as its own file precisely because it contradicts that
+   document — see the note at the bottom.
+
+   IMPORTANT — the backdrop-root trap
+   MDN is explicit: an ancestor with opacity < 1, a filter, a mask
+   or will-change on any of those becomes a "backdrop root", and a
+   child's backdrop-filter then only blurs what is between them. The
+   old scroll-reveal animated opacity from 0, which meant every glass
+   surface inside a revealing card silently stopped blurring.
+   So the reveal below swaps opacity for blur: at rest the filter
+   resolves to none, the backdrop root disappears, and the glass
+   actually blurs.
+   ============================================================ */
+
+:root{
+  --glass-tint: 246 243 235;          /* warm paper, matches the brand */
+  --glass-bg: rgb(var(--glass-tint) / .58);
+  --glass-bg-strong: rgb(var(--glass-tint) / .76);
+  --glass-blur: 20px;
+  --glass-sat: 190%;
+  --glass-edge: rgb(255 255 255 / .55);
+  --glass-edge-soft: rgb(16 17 20 / .10);
+  --glass-shadow: 0 18px 44px -20px rgb(16 17 20 / .38);
+  --glass-shadow-lg: 0 34px 80px -28px rgb(16 17 20 / .42);
+  --glass-spec: linear-gradient(140deg, rgb(255 255 255 / .72), rgb(255 255 255 / 0) 42%);
+  --glass-r: 20px;
+  --glass-r-lg: 28px;
+  --story-shift: 56px;                /* narrative travel distance */
+  /* Dark variant. The announcement bar, contact form and footer chips all sit
+     on near-black sections, so they need dark glass — pale glass behind their
+     light label text was unreadable. */
+  --glass-dark-bg: rgb(14 15 19 / .62);
+  --glass-dark-strong: rgb(14 15 19 / .82);
+  --glass-dark-edge: rgb(255 255 255 / .16);
+  --glass-dark-shadow: 0 18px 44px -18px rgb(0 0 0 / .6);
+}
+
+/* ============================================================
+   Floating glass pill navigation
+   ------------------------------------------------------------
+   The bar is lifted out of flow and centred as a single glass
+   pill that floats over the page, with the announcement strip
+   sticky above it. The wrapper stays sticky (it is the containing
+   block for the absolute pill) but contributes only the 34px
+   strip height, so the pill overlays content rather than pushing it.
+   ============================================================ */
+.site-top{
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.site-top .site-header{
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: fit-content;
+  max-width: calc(100vw - 20px);
+  height: auto;
+  min-height: 54px;
+  padding: 7px 8px 7px 20px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.09);
+  -webkit-backdrop-filter: blur(26px) saturate(180%);
+  backdrop-filter: blur(26px) saturate(180%);
+  border: 1px solid rgba(255,255,255,.17);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.26),
+    inset 0 -1px 0 rgba(255,255,255,.05),
+    0 20px 44px -18px rgba(0,0,0,.78);
+}
+.site-header.scrolled{
+  background: rgba(255,255,255,.13);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.3),
+    0 24px 52px -18px rgba(0,0,0,.85);
+}
+.site-header .wordmark{font-size:1.05rem;letter-spacing:-.05em;white-space:nowrap}
+.site-header .wordmark span{color:#9fb0ff}
+.site-header .desktop-nav{margin-left:14px;gap:4px}
+.site-header .desktop-nav a{
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: .82rem;
+  color: rgba(228,234,248,.8);
+  transition: background .25s, color .25s;
+}
+.site-header .desktop-nav a:hover,
+.site-header .desktop-nav a.is-active{background:rgba(255,255,255,.12);color:#fff}
+.site-header .desktop-nav a::after{display:none}
+
+/* Divider, then the pill CTA — matches the reference bar */
+.site-header .header-cta{
+  margin-left: 8px;
+  padding: 10px 18px;
+  position: relative;
+  border-radius: 999px;
+}
+.site-header .header-cta::before{
+  content: "";
+  position: absolute;
+  left: -9px;
+  top: 50%;
+  translate: 0 -50%;
+  width: 1px;
+  height: 22px;
+  background: rgba(255,255,255,.2);
+}
+.site-header .menu-toggle{margin-left:8px;background:rgba(255,255,255,.1);border-radius:999px;width:40px;height:40px}
+.site-header .menu-toggle span{background:#fff}
+
+/* Clear the floating pill */
+main{padding-top:76px}
+.hero-v2{min-height:min(880px,calc(100svh - 76px));padding-top:26px}
+main section[id],section[id]{scroll-margin-top:118px}
+
+@media(max-width:900px){
+  .site-top .site-header{padding:6px 8px 6px 16px;min-height:48px}
+  .site-header .desktop-nav{display:none}
+  main{padding-top:64px}
+  .hero-v2{min-height:0}
+}
+   /* ============================================================
+   Dark navy theme
+   ------------------------------------------------------------
+   The base canvas moves from warm paper to deep navy so that the
+   glass has something cool to sit on. That also fixes a real bug:
+   62%-black glass over cream paper composited to a muddy brown
+   in the announcement bar and contact panel. Over navy the same
+   translucency reads as glass.
+
+   --ink flips from near-black to near-white so every
+   `color:var(--ink)` site becomes light text in one move. The six
+   places that used --ink as a *background* are re-pinned to
+   --ink-surface so they stay dark.
+   ============================================================ */
+:root{
+  --paper:#0b1020;
+  --ink:#eef1f8;
+  --muted:#98a5c6;
+  --line:rgba(150,175,225,.16);
+  --ink-surface:#0c1120;          /* where --ink was a background */
+  --navy-0:#070b16;
+  --navy-1:#0b1020;
+  --navy-2:#121a30;
+  --navy-3:#1b2745;
+  --glass-tint: 214 226 248;
+}
+
+body{
+  background-color: var(--navy-1);
+  background-image:
+    linear-gradient(rgba(140,168,220,.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(140,168,220,.05) 1px, transparent 1px),
+    radial-gradient(1200px 760px at 78% 12%, #22375f 0%, #131c36 42%, #080d1a 100%);
+  background-size: 64px 64px, 64px 64px, 100% 100%;
+  background-attachment: fixed;
+  color: var(--ink);
+}
+
+/* --ink as a background must stay dark */
+.button-dark,
+.ticker,
+.filter.active,
+.skip-link,
+.line,
+.cs-discuss{background: var(--ink-surface)}
+.button-dark,.ticker,.filter.active,.skip-link,.cs-discuss{color:#fff}
+.filter.active{border-color: var(--ink-surface)}
+.skip-link{color:#fff}
+
+/* Sections */
+.work-section{background: var(--navy-2)}
+.services-section{background: var(--navy-1)}
+.faq-section{background: var(--navy-1)}
+.about-section{background: var(--navy-2)}
+.statement{background: var(--navy-3); color: #fff}
+.approach-section{background: var(--navy-0)}
+.contact-section{background: var(--navy-0)}
+.footer-menu{background: var(--navy-1); border-top-color: var(--line)}
+.footer-brand p{color: var(--muted)}
+
+/* Header and announcement read pure black, per the reference */
+.announcement{
+  background: #000;
+  color: #c7c9d4;
+  border-bottom-color: rgba(255,255,255,.1);
+}
+.site-header{
+  background: rgba(4,6,14,.72);
+  border-bottom-color: var(--line);
+}
+.site-header.scrolled{background: rgba(4,6,14,.86)}
+
+/* Type that was hard-coded light-on-cream now needs re-pinning for navy */
+.section-heading h2,
+.section-heading>p,
+.about-copy h2,
+.about-copy>p,
+.faq-grid h2,
+.faq-list details p,
+.contact-copy h2,
+.contact-copy>p,
+.project-card p,
+.project-meta strong,
+.service-name,
+.statement p,
+.ticker-track,
+.cs-headline,
+.cs-lede>p,
+.cs-prose p,
+.cs-scope-list li,
+.cs-spec-word,
+.cs-next-link,
+.footer-label,
+.footer-nav-links a,
+.footer-email,
+.footer-connect>p,
+.footer-bottom{color: var(--ink)}
+
+.cs-meta dt,
+.cs-scope .cs-label,
+.footer-label,
+.filter-bar .filter,
+.work-note,
+.footer-nav-links a span{color: var(--muted)}
+
+/* Body copy on navy needs to be lighter than the cream-theme muted tone */
+.about-copy>p:not(.eyebrow),
+.faq-list details p,
+.project-card p{color:#b6c1de}
+
+.cs-scope-list,
+.cs-meta>div,
+.cs-meta,
+.footer-nav-links a,
+.cs-tile figcaption{color: var(--ink)}
+.cs-scope-list li,
+.cs-meta>div{border-bottom-color: var(--line)}
+.cs-scope-list{border-top-color: var(--line)}
+.cs-tile{border-color: var(--line)}
+.cs-hero{border-color: var(--line)}
+.cs-quote{border-left: 0}
+
+/* ============================================================
+   Core glass primitive ----------
+   Deliberately NOT a blanket selector. Anything whose background
+   carries brand meaning (.header-cta, .button-dark, .button-blue,
+   .cs-discuss) is deliberately excluded — forcing pale glass behind
+   white label text made them invisible. Glass goes only on surfaces
+   that float over imagery or content. */
+.glass,
+.site-header,
+.mobile-menu,
+.announcement,
+.filter-bar,
+.project-meta,
+.contact-form,
+.footer-status,
+.social-fab{
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
+  border: 1px solid var(--glass-edge);
+  box-shadow: inset 0 1px 0 var(--glass-edge), var(--glass-shadow);
+}
+
+/* Brand-coloured controls keep their colour and only gain the glass
+   highlight + lift, so they stay legible and on-brand. */
+.header-cta,
+.button-dark,
+.button-blue,
+.cs-discuss{
+  border-radius: 999px;
+  transition: transform .3s cubic-bezier(.2, .7, .1, 1), box-shadow .3s ease, background .25s, border-color .25s;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .32), var(--glass-shadow);
+}
+.header-cta:hover,
+.button-dark:hover,
+.button-blue:hover,
+.cs-discuss:hover{
+  transform: translateY(-2px);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .42), var(--glass-shadow-lg);
+}
+
+/* Specular sheen — the trait that reads as "glass" rather than "blur" */
+.glass,
+.site-header,
+.mobile-menu,
+.filter-bar,
+.project-meta,
+.footer-status,
+.social-fab{
+  position: relative;
+  isolation: isolate;
+}
+.glass::before,
+.site-header::before,
+.filter-bar::before,
+.footer-status::before,
+.social-fab::before{
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--glass-spec);
+  pointer-events: none;
+}
+
+/* ---------- Dark-surface glass ----------
+   Announcement bar, contact form and footer chips live on dark sections, so
+   they take dark glass and keep their light text. */
+.announcement,
+.contact-form,
+.footer-status,
+.footer-back span{
+  background: var(--glass-dark-bg);
+  border-color: var(--glass-dark-edge);
+  box-shadow: inset 0 1px 0 var(--glass-dark-edge), var(--glass-dark-shadow);
+}
+.footer-back span{background: var(--glass-dark-strong)}
+
+.contact-form input,
+.contact-form select,
+.contact-form textarea{
+  background: rgb(255 255 255 / .07);
+  border-color: var(--glass-dark-edge);
+  color: #fff;
+  border-radius: 12px;
+  padding: 12px 14px;
+  transition: background .25s, border-color .25s, box-shadow .25s;
+}
+.contact-form input::placeholder,
+.contact-form textarea::placeholder{color: rgb(233 235 240 / .55)}
+.contact-form input:focus,
+.contact-form select:focus,
+.contact-form textarea:focus{
+  background: rgb(255 255 255 / .13);
+  border-color: #8ea0ff;
+  box-shadow: 0 0 0 3px rgb(142 160 255 / .22);
+}
+.contact-form select{color: #fff}
+.contact-form select option{background: #101116; color: #fff}
+
+/* ---------- Surfaces ---------- */
+.site-header{
+  border-bottom: 1px solid var(--glass-edge);
+  box-shadow: inset 0 1px 0 var(--glass-edge), var(--glass-shadow);
+  border-radius: 0;
+}
+.site-header.scrolled{box-shadow: inset 0 1px 0 var(--glass-edge), var(--glass-shadow-lg)}
+
+/* Geometry only — the bar is a dark section, so its colour comes from the
+   dark-glass block above. A pale fill here put white text on cream. */
+.announcement{
+  border: 0;
+  border-bottom: 1px solid var(--glass-dark-edge);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.header-cta{
+  border-color: transparent;
+}
+.site-header.scrolled{box-shadow: inset 0 1px 0 var(--glass-edge), var(--glass-shadow-lg)}
+
+.filter-bar{
+  position: sticky;
+  top: calc(78px + 14px);
+  z-index: 30;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  width: fit-content;
+  margin: 0 auto clamp(1.5rem, 3vw, 2.75rem);
+  padding: .5rem;
+  border-radius: 999px;
+}
+.filter{
+  border: 0;
+  background: transparent;
+  border-radius: 999px;
+  transition: background .25s, color .25s, transform .25s;
+}
+.filter:hover{transform: translateY(-1px)}
+.filter.is-active{
+  background: rgb(255 255 255 / .72);
+  color: var(--ink);
+  box-shadow: 0 6px 16px -8px rgb(16 17 20 / .4);
+}
+
+/* Project cards: dark glass caption floating over the artwork.
+   It sits on photography, so dark glass is correct here — the
+   pale variant left light text on a pale film. */
+.project-meta{
+  border-radius: var(--glass-r);
+  border-top: 0;
+  margin: -34px clamp(.75rem, 1.6vw, 1.25rem) 0;
+  padding: 16px 18px;
+  position: relative;
+  z-index: 3;
+  background: rgba(8,11,22,.62);
+  -webkit-backdrop-filter: blur(24px) saturate(170%);
+  backdrop-filter: blur(24px) saturate(170%);
+  border: 1px solid rgba(255,255,255,.16);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 20px 44px -20px rgba(0,0,0,.8);
+}
+.project-meta strong{color:#fff}
+.project-meta small{color: rgba(206,216,240,.82)}
+.project-open{
+  border-radius: var(--glass-r-lg);
+  overflow: hidden;
+}
+
+/* Accents that were cobalt-on-cream need lifting for the navy canvas */
+.service-num,
+.cs-meta a,
+.cs-next-link:hover{color: #8ea0ff}
+.statement em,
+.cs-headline em{color: #9fb0ff}
+.project-arrow{
+  background: var(--glass-bg-strong);
+  border-color: var(--glass-edge);
+  box-shadow: var(--glass-shadow);
+}
+.project-card:hover .project-arrow{background: var(--blue);border-color: transparent;color: #fff}
+
+/* Services / FAQ open panels */
+.service-row[open] .service-content{
+  border-radius: var(--glass-r);
+  padding: 20px 24px;
+  margin-bottom: 8px;
+}
+
+/* Contact form geometry only — colour and field styling come from the
+   dark-glass block above, since this section is near-black. */
+.contact-form{
+  border-radius: var(--glass-r-lg);
+  padding: clamp(22px, 3vw, 38px);
+}
+
+/* The inquiry panel, done as real glass over the navy canvas:
+   a translucent pane that blurs what is behind it, a lit top edge,
+   and a soft drop so it reads as a lifted sheet. */
+.contact-form{
+  background: linear-gradient(180deg, rgba(226,236,255,.11), rgba(226,236,255,.05));
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  backdrop-filter: blur(30px) saturate(180%);
+  border: 1px solid rgba(255,255,255,.16);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.28),
+    inset 0 -1px 0 rgba(255,255,255,.06),
+    0 30px 70px -30px rgba(0,0,0,.85);
+}
+.contact-form::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:inherit;
+  pointer-events:none;
+  background: linear-gradient(150deg, rgba(255,255,255,.16), rgba(255,255,255,0) 38%);
+}
+.contact-form label{color:#c3cbe4}
+.contact-form input,
+.contact-form select,
+.contact-form textarea{
+  background: rgba(255,255,255,.09);
+  border: 1px solid rgba(255,255,255,.14);
+  color:#fff;
+}
+.contact-form input:focus,
+.contact-form select:focus,
+.contact-form textarea:focus{
+  background: rgba(255,255,255,.16);
+  border-color: #8ea0ff;
+}
+.form-note{color: rgba(198,208,232,.72)}
+
+/* Footer chip geometry; colour comes from the dark-glass block above. */
+.footer-status{
+  border-radius: 999px;
+}
+
+.social-fab{
+  position: fixed;
+  right: clamp(18px, 3vw, 34px);
+  bottom: clamp(18px, 3vw, 34px);
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  color: var(--ink);
+  border-color: var(--glass-edge);
+  box-shadow: inset 0 1px 0 var(--glass-edge), var(--glass-shadow-lg);
+  transition: transform .3s cubic-bezier(.2, .7, .1, 1), background .25s;
+}
+.social-fab svg{width: 21px; height: 21px}
+.social-fab:hover{transform: translateY(-4px) scale(1.05);background: rgb(255 255 255 / .74)}
+@media (max-width: 560px){
+  .social-fab{width: 46px; height: 46px}
+}
+
+/* Case-study pages pick up the same treatment */
+.cs-tile,
+.cs-spec{
+  border-radius: var(--glass-r);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
+  border-color: var(--glass-edge);
+  box-shadow: inset 0 1px 0 var(--glass-edge), var(--glass-shadow);
+}
+.cs-quote{
+  border-left: 0;
+  padding: 18px 22px;
+  border-radius: var(--glass-r);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(14px) saturate(var(--glass-sat));
+  backdrop-filter: blur(14px) saturate(var(--glass-sat));
+  border: 1px solid var(--glass-edge);
+  box-shadow: inset 0 1px 0 var(--glass-edge), var(--glass-shadow);
+}
+.cs-discuss{border-radius: 999px}
+.cs-tile--spec{background: var(--glass-bg-strong)}
+
+/* ---------- Scroll reveal: blur, never opacity ----------
+   opacity < 1 would make every ancestor a backdrop root and break
+   the glass inside it. filter resolves to none once visible. */
+.reveal-ready{
+  opacity: 1;
+  transform: translateY(var(--story-shift));
+  filter: blur(10px);
+  transition: opacity .8s ease, transform .9s cubic-bezier(.2, .7, .1, 1), filter .8s ease;
+}
+.reveal-ready.is-visible{transform: none; filter: none}
+
+/* ---------- 3D ---------- */
+.work-section,
+.approach-section,
+.services-section,
+.about-section,
+.faq-section,
+.statement{transform-style: preserve-3d}
+
+.project-open{
+  transition: transform .45s cubic-bezier(.2, .7, .1, 1);
+}
+.project-card{
+  perspective: 1100px;
+  transform-style: preserve-3d;
+}
+.project-card:hover .project-open{
+  transform: translateZ(28px) rotateX(3deg) rotateY(-3deg);
+}
+.project-card:hover .real-art{filter: saturate(1.12) brightness(1.03)}
+
+.process-card{
+  perspective: 900px;
+  transition: transform .45s cubic-bezier(.2, .7, .1, 1), background .3s, box-shadow .3s;
+}
+.process-card:hover{
+  transform: translateZ(26px);
+  box-shadow: var(--glass-shadow-lg);
+  border-color: var(--glass-edge);
+}
+.process-symbol svg{transition: transform .45s cubic-bezier(.2, .7, .1, 1)}
+.process-card:hover .process-symbol svg{transform: translateY(-5px) scale(1.06)}
+
+.about-image{
+  transition: transform .6s cubic-bezier(.2, .7, .1, 1), box-shadow .4s;
+}
+.about-grid{perspective: 1200px}
+.about-image:hover{
+  transform: translateZ(38px) rotateY(-4deg);
+  box-shadow: 34px 34px 0 #c8d1fb, var(--glass-shadow-lg);
+}
+
+/* ---------- Storytelling scroll ----------
+   The arc: sections travel up and settle, with the portrait and the
+   hero leading the narrative. Scroll-driven where supported, with
+   the observer reveal above as the fallback everywhere else. */
+@media (prefers-reduced-motion: no-preference){
+  @supports (animation-timeline: view()){
+    .story{
+      animation: storyRise linear both;
+      animation-timeline: view();
+      animation-range: entry 5% cover 30%;
+    }
+    .hero-copy{animation: storyLead linear both; animation-timeline: view(); animation-range: exit 0% exit 90%}
+    .hero-visual{animation: storyDrift linear both; animation-timeline: view(); animation-range: exit 0% exit 100%}
+    .statement p{animation: storyStatement linear both; animation-timeline: view(); animation-range: entry 20% cover 45%}
+  }
+}
+
+/* Transform only — no opacity, no filter.
+   An opacity fade here dropped text to ~1.4:1 against the page while
+   animating, and a filter would make the section a backdrop root and
+   break the glass inside it for the duration. */
+@keyframes storyRise{
+  from{transform:translateY(70px) scale(.97)}
+  to{transform:none}
+}
+@keyframes storyLead{
+  from{transform:none}
+  to{transform:translateY(-70px)}
+}
+@keyframes storyDrift{
+  from{transform:none}
+  to{transform:translateY(-34px)}
+}
+@keyframes storyStatement{
+  from{transform:translateY(46px)}
+  to{transform:none}
+}
+
+/* ---------- Reduced motion ----------
+   One place to neutralise everything this layer adds. */
+@media (prefers-reduced-motion: reduce){
+  *, *::before, *::after{
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .reveal-ready{opacity: 1; transform: none; filter: none}
+  .project-card:hover .project-open,
+  .process-card:hover,
+  .about-image:hover{transform: none}
+  .project-card:hover .real-art{filter: none}
+  .social-fab:hover{transform: none}
+  .filter-bar{position: static}
+}
+
+/* ---------- Fallback ----------
+   No backdrop-filter (older browsers): drop to an opaque surface so
+   text contrast never degrades to translucent-on-photo. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))){
+  :root{--glass-bg: rgb(var(--glass-tint) / .96); --glass-bg-strong: rgb(var(--glass-tint) / .99)}
+}

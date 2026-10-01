@@ -35,6 +35,16 @@ Each store currently supplies one campaign image, so the square detail tile re-c
 
 The hero layers the supplied portrait over a subtle dark gradient, with gentle portrait movement. The abstract rings and floating badge have been removed. Sections reveal on scroll. Reduced-motion settings disable decorative animation. Filters, project panels, service and FAQ disclosures, and the mobile menu are interactive.
 
+## Visual layer
+
+`liquid.css` carries the current look: a dark-navy canvas with a Liquid Glass treatment, and scroll-driven storytelling animations where the browser supports `animation-timeline: view()` (with the IntersectionObserver reveal as the fallback elsewhere). It is loaded last and is entirely self-contained — delete its single `<link>` to fall back to the editorial system in `styles.css` + `v2.css`.
+
+Two gotchas it works around, both documented inline: an ancestor with `opacity < 1` or `filter` becomes a backdrop root and silently kills a child's `backdrop-filter`, and pale glass behind light label text is unreadable, so dark-surface components take a dark-glass variant.
+
+## LinkedIn
+
+A floating circular button links to `linkedin.com/in/testimony-akinbinu-3198b1413`. The share-tracking `utm_*` parameters were stripped; they are campaign tags, not part of the profile URL.
+
 The hero is a six-plane CSS perspective scene and the portrait drifts as the hero scrolls, driven by a `--vp` custom property that `app.js` publishes per section on a single `requestAnimationFrame`. Everything else is deliberately flat: interaction states use colour, borders and 1px offset blocks rather than lift, tilt or drop shadows, per the Stitch design system's "Architectural Planar Depth" rule. Depth costs no payload and falls back to flat layout. See `DESIGN.md` for the full depth notes.
 
 ## Contact
