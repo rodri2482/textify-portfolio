@@ -1,0 +1,6 @@
+          <a class="project-open" href="./works/lauravogue.html">
+          <a class="project-open" href="./works/ecoraft.html">
+          <a class="project-open" href="./works/dewlip.html">
+          <a class="project-open" href="./works/alma-valenti.html">
+          <a class="project-open" href="./works/renova-fashion.html">
+          <a class="project-open" href="./works/peter-oliveira.html">
