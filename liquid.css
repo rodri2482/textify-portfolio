@@ -133,7 +133,30 @@ main section[id],section[id]{scroll-margin-top:118px}
   main{padding-top:64px}
   .hero-v2{min-height:0}
 }
-   /* ============================================================
+   /* ---------- Contextual header: nav links morph into the filters ----------
+   Desktop only — at mobile widths the four filters plus the wordmark will not
+   fit the pill, so the section keeps its own filter bar there. app.js toggles
+   .in-work while #work is on screen. */
+.header-filters{display:none}          /* hidden until opted in, so it cannot leak onto mobile */
+@media(min-width:901px){
+  .work-section .filter-bar{display:none}
+  .header-filters{display:none;align-items:center;gap:2px;margin-left:14px}
+  .header-filters .filter{
+    padding:8px 13px;
+    font-size:.78rem;
+    letter-spacing:.01em;
+    color:rgba(228,234,248,.8);
+    border-radius:999px;
+    transition:background .25s,color .25s;
+  }
+  .header-filters .filter sup{font-size:.62em;opacity:.7}
+  .header-filters .filter:hover{background:rgba(255,255,255,.1);color:#fff}
+  .header-filters .filter.active{background:var(--ink-surface);color:#fff}
+  .site-header.in-work .header-filters{display:flex}
+  .site-header.in-work .desktop-nav{display:none}
+}
+
+/* ============================================================
    Dark navy theme
    ------------------------------------------------------------
    The base canvas moves from warm paper to deep navy so that the

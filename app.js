@@ -78,13 +78,29 @@ const filters = document.querySelectorAll('.filter');
 const cards = document.querySelectorAll('.project-card');
 filters.forEach(button => button.addEventListener('click', () => {
   const selection = button.dataset.filter;
+  // Match on the filter value, not on element identity: the same filter exists
+  // in two places (header pill and section bar), so clicking one must light up
+  // both. Comparing elements left the other copy with nothing selected.
   filters.forEach(item => {
-    const active = item === button;
+    const active = item.dataset.filter === selection;
     item.classList.toggle('active', active);
     item.setAttribute('aria-pressed', String(active));
   });
   cards.forEach(card => { card.hidden = selection !== 'all' && !card.dataset.category.split(' ').includes(selection); });
 }));
+
+/* ---------- Contextual header ----------
+   While the work section is on screen the pill swaps its nav links for the
+   project filters. Both filter groups stay in sync because the handler above
+   toggles every .filter button at once, so the section copy and the header
+   copy can never disagree. */
+const workSection = document.getElementById('work');
+if (workSection) {
+  const workObserver = new IntersectionObserver(entries => {
+    entries.forEach(entry => siteHeader.classList.toggle('in-work', entry.isIntersecting));
+  }, { threshold: 0.01, rootMargin: '-96px 0px -25% 0px' });
+  workObserver.observe(workSection);
+}
 
 
 // Only the home page carries the inquiry form; case studies link back to it.
