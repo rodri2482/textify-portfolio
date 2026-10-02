@@ -852,3 +852,468 @@ body{
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))){
   :root{--glass-bg: rgb(var(--glass-tint) / .96); --glass-bg-strong: rgb(var(--glass-tint) / .99)}
 }
+
+/* ============================================================
+   The material, second pass
+   ------------------------------------------------------------
+   The first pass made surfaces translucent. That is necessary but
+   not sufficient: a translucent rectangle with a hairline border
+   reads as a tinted panel, not as glass. What separates the two is
+   how the *edge* behaves. Real glass is thick, so it gathers light
+   along the edge that faces the light, lets the eye through the
+   middle, and throws a soft pool of light beneath itself rather
+   than a hard dark shadow — which on a navy canvas is invisible.
+
+   So the same seven layers now come from tokens, and every surface
+   is built from the same recipe:
+
+     fill      a lit-from-above gradient, never a flat alpha
+     rim       1px edge, bright at the top-left, fading out toward
+               the bottom-right, painted through background-clip so
+               it costs no layout
+     sheen     a wide specular wash across the upper half
+     top light a hairline of white inside the top edge: thickness
+     bounce    a hairline of white inside the bottom edge
+     grain     a barely-there noise tile that stops the fill
+               reading as plastic haze
+     lift      a wide, cool ambient glow instead of a black shadow
+
+   Two recipes, because there are two jobs. Light glass sits over
+   content. Dark glass sits on photography and on near-black
+   sections, where a pale fill would wash out the light text on it.
+
+   Blur is only applied where there is genuinely something behind
+   the surface to blur. Flat navy sections get the fill, rim and
+   glow with no backdrop-filter: it would cost a compositing layer
+   per card and change nothing you can see.
+   ============================================================ */
+:root{
+  --glass-blur: 24px;
+  --glass-sat: 180%;
+
+  --glass-fill: linear-gradient(168deg, rgb(226 236 255 / .17) 0%, rgb(226 236 255 / .07) 44%, rgb(226 236 255 / .11) 100%);
+  --glass-fill-lift: linear-gradient(168deg, rgb(226 236 255 / .25) 0%, rgb(226 236 255 / .11) 44%, rgb(226 236 255 / .15) 100%);
+  --glass-rim: linear-gradient(152deg,
+      rgb(255 255 255 / .78) 0%,
+      rgb(255 255 255 / .22) 26%,
+      rgb(255 255 255 / .05) 52%,
+      rgb(255 255 255 / .10) 78%,
+      rgb(255 255 255 / .34) 100%);
+  --glass-rim-lift: linear-gradient(152deg,
+      rgb(255 255 255 / .95) 0%,
+      rgb(255 255 255 / .34) 26%,
+      rgb(255 255 255 / .09) 52%,
+      rgb(255 255 255 / .18) 78%,
+      rgb(255 255 255 / .52) 100%);
+  --glass-rim-dim: linear-gradient(152deg,
+      rgb(255 255 255 / .46) 0%,
+      rgb(255 255 255 / .13) 28%,
+      rgb(255 255 255 / .04) 54%,
+      rgb(255 255 255 / .07) 80%,
+      rgb(255 255 255 / .20) 100%);
+  --glass-sheen: linear-gradient(142deg, rgb(255 255 255 / .26) 0%, rgb(255 255 255 / .07) 22%, rgb(255 255 255 / 0) 48%);
+  --glass-fill-dark: linear-gradient(168deg, rgb(226 236 255 / .11) 0%, rgb(226 236 255 / .04) 44%, rgb(226 236 255 / .07) 100%);
+  /* One grain tile, reused everywhere. Fractal noise, desaturated,
+     tiled at 160px so it never shows a repeat. */
+  --glass-grain: url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)' opacity='.14'/%3E%3C/svg%3E");
+  /* Cool ambient light underneath. A black shadow at this opacity
+     simply is not visible against #0b1020. */
+  --glass-lift: 0 26px 60px -34px rgb(96 128 224 / .46), 0 4px 14px -8px rgb(0 0 0 / .66);
+  --glass-lift-lg: 0 40px 84px -36px rgb(96 128 224 / .58), 0 8px 20px -10px rgb(0 0 0 / .7);
+  --glass-top: inset 0 1px 0 rgb(255 255 255 / .30);
+  --glass-bounce: inset 0 -1px 0 rgb(255 255 255 / .07);
+}
+
+/* ---------- Light glass: surfaces that float over content ---------- */
+.glass,
+.filter-bar,
+.contact-form,
+.footer-status,
+.social-fab,
+.cs-tile,
+.cs-spec,
+.cs-quote{
+  border: 1px solid transparent;
+  /* Reset the flat fill the first pass left behind. Left in place it would
+     sit under the gradient and make the glass twice as opaque as intended —
+     and it is what pushed the floating action button's icon down to 3.07:1. */
+  background-color: transparent;
+  /* fill, then the rim, then the grain. The rim is clipped to the
+     border box so only the 1px edge shows it; the other two are
+     clipped to the padding box so they stay inside that edge. */
+  background-image: var(--glass-fill), var(--glass-rim), var(--glass-grain);
+  background-size: 100% 100%, 100% 100%, 160px 160px;
+  background-origin: border-box, border-box, border-box;
+  background-clip: padding-box, border-box, padding-box;
+  -webkit-background-clip: padding-box, border-box, padding-box;
+  background-repeat: no-repeat, no-repeat, repeat;
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
+  box-shadow: var(--glass-top), var(--glass-bounce), var(--glass-lift);
+  transition: box-shadow .35s ease, background-color .3s ease;
+}
+
+/* The navigation pill is a two-class selector (.site-top .site-header), so the
+   group rule above cannot touch it: the pill keeps the flat fill from line 62
+   instead of the new material. Restated here at matching specificity. */
+.site-top .site-header,
+.site-header.scrolled{
+  border: 1px solid transparent;
+  background-color: transparent;
+  background-image: var(--glass-fill), var(--glass-rim), var(--glass-grain);
+  background-size: 100% 100%, 100% 100%, 160px 160px;
+  background-origin: border-box, border-box, border-box;
+  background-clip: padding-box, border-box, padding-box;
+  -webkit-background-clip: padding-box, border-box, padding-box;
+  background-repeat: no-repeat, no-repeat, repeat;
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
+  box-shadow: var(--glass-top), var(--glass-bounce), var(--glass-lift);
+  transition: box-shadow .35s ease, background-color .3s ease;
+}
+.site-header.scrolled{
+  background-image: var(--glass-fill-lift), var(--glass-rim-lift), var(--glass-grain);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .38), inset 0 -1px 0 rgb(255 255 255 / .08), var(--glass-lift-lg);
+}
+.site-top .site-header:hover{
+  background-image: var(--glass-fill-lift), var(--glass-rim-lift), var(--glass-grain);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .38), inset 0 -1px 0 rgb(255 255 255 / .08), var(--glass-lift-lg);
+}
+
+/* The sheen is a pseudo-element rather than a fourth background layer so it
+   can sit above the grain without costing another paint of the whole surface.
+   z-index -1 inside the element's own stacking context puts it over the fill
+   and under the text. */
+.glass::before,
+.site-header::before,
+.mobile-menu::before,
+.filter-bar::before,
+.footer-status::before,
+.social-fab::before,
+.contact-form::before,
+.cs-quote::before{
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--glass-sheen);
+  pointer-events: none;
+}
+
+/* ---------- Dark glass: photography and near-black sections ---------- */
+.project-meta,
+.footer-back span{
+  border: 1px solid transparent;
+  background-color: rgb(7 10 20 / .58);
+  background-image: var(--glass-fill-dark), var(--glass-rim-dim), var(--glass-grain);
+  background-size: 100% 100%, 100% 100%, 160px 160px;
+  background-origin: border-box, border-box, border-box;
+  background-clip: padding-box, border-box, padding-box;
+  -webkit-background-clip: padding-box, border-box, padding-box;
+  background-repeat: no-repeat, no-repeat, repeat;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .26), inset 0 -1px 0 rgb(255 255 255 / .05),
+              0 24px 54px -28px rgb(0 0 0 / .82);
+}
+
+/* ---------- Lift on hover ----------
+   Everything interactive rises a little and its rim brightens, so the
+   glass answers the pointer the way a physical surface would. */
+.site-header:hover,
+.filter-bar:hover,
+.contact-form:hover,
+.footer-status:hover,
+.social-fab:hover,
+.cs-tile:hover,
+.cs-spec:hover,
+.cs-quote:hover{
+  background-image: var(--glass-fill-lift), var(--glass-rim-lift), var(--glass-grain);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .38), inset 0 -1px 0 rgb(255 255 255 / .08), var(--glass-lift-lg);
+}
+.header-cta:hover,
+.button-dark:hover,
+.button-blue:hover,
+.cs-discuss:hover,
+.social-fab:hover{
+  transform: translateY(-2px);
+}
+
+/* ---------- Canvas atmosphere ----------
+   The sections were flat fills. A wide, low glow high on the right and
+   the same grain the glass uses give the navy somewhere to be, and stop
+   the page reading as one long slab. Text contrast is unaffected: the
+   glows top out around a fifth of white over the darkest navy. */
+.work-section{
+  background-image:
+    radial-gradient(1100px 520px at 50% 0%, rgb(142 160 255 / .13), transparent 62%),
+    radial-gradient(760px 420px at 10% 100%, rgb(69 92 247 / .13), transparent 60%),
+    var(--glass-grain);
+  background-size: 100% 100%, 100% 100%, 160px 160px;
+}
+.statement{
+  background-image:
+    radial-gradient(900px 420px at 20% 4%, rgb(142 160 255 / .17), transparent 62%),
+    radial-gradient(720px 400px at 88% 98%, rgb(69 92 247 / .22), transparent 64%),
+    var(--glass-grain);
+  background-size: 100% 100%, 100% 100%, 160px 160px;
+  border-block: 1px solid rgb(255 255 255 / .08);
+}
+.about-section{
+  background-image:
+    radial-gradient(880px 460px at 84% 12%, rgb(142 160 255 / .12), transparent 62%),
+    var(--glass-grain);
+  background-size: 100% 100%, 160px 160px;
+}
+.footer-menu{
+  background-image:
+    radial-gradient(820px 320px at 50% 0%, rgb(142 160 255 / .09), transparent 70%),
+    var(--glass-grain);
+  background-size: 100% 100%, 160px 160px;
+  border-top-color: rgb(255 255 255 / .1);
+}
+
+/* ============================================================
+   Surfaces that were not glass yet
+   ------------------------------------------------------------
+   These sit on flat navy, so they take the fill, rim and glow
+   without a backdrop-filter: there is nothing behind them to
+   blur, and each one would otherwise cost a compositing layer.
+   ============================================================ */
+
+/* The approach cards were flat tiles divided by 1px lines of grid
+   showing through. As separate glass tiles with real gaps they read
+   as four objects sitting on the section. */
+.approach-section .process-grid{
+  background: transparent;
+  border-color: rgb(255 255 255 / .08);
+  gap: clamp(10px, 1vw, 16px);
+}
+.approach-section .process-card{
+  border: 1px solid rgb(255 255 255 / .10);
+  border-radius: 18px;
+  background-color: rgb(12 17 34 / .46);
+  background-image: var(--glass-fill-dark), var(--glass-grain);
+  background-size: 100% 100%, 160px 160px;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .16), 0 22px 48px -32px rgb(0 0 0 / .8);
+}
+.approach-section .process-card:hover{
+  background-color: rgb(16 22 44 / .58);
+  border-color: rgb(255 255 255 / .26);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .3), 0 34px 70px -34px rgb(96 128 224 / .58);
+}
+.process-symbol{color: var(--glass-accent, #9eabff)}
+
+/* Open service panel becomes a glass sheet, and its tags become chips. */
+.services-section .service-row[open] .service-content{
+  background-image: var(--glass-fill-dark), var(--glass-grain);
+  background-size: 100% 100%, 160px 160px;
+  background-color: rgb(12 17 34 / .34);
+  border: 1px solid rgb(255 255 255 / .10);
+  border-radius: 18px;
+  padding: 22px 24px 24px;
+  margin-bottom: 10px;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .18), 0 24px 52px -34px rgb(0 0 0 / .8);
+}
+.services-section .service-content span{
+  background: rgb(226 236 255 / .07);
+  border: 1px solid rgb(255 255 255 / .16);
+  border-radius: 999px;
+  color: #cfd8f0;
+  transition: background .25s, border-color .25s, color .25s;
+}
+.services-section .service-content span:hover{
+  background: rgb(226 236 255 / .14);
+  border-color: rgb(255 255 255 / .32);
+  color: #fff;
+}
+
+/* The pause control is the smallest glass object on the page, so it
+   carries the same recipe at the smallest scale. */
+.rail-toggle{
+  background-image: linear-gradient(168deg, rgb(226 236 255 / .18), rgb(226 236 255 / .06));
+  border: 1px solid rgb(255 255 255 / .22);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .34), 0 10px 24px -14px rgb(96 128 224 / .6);
+}
+.rail-toggle:hover{
+  background-image: linear-gradient(168deg, rgb(226 236 255 / .28), rgb(226 236 255 / .1));
+  border-color: rgb(255 255 255 / .44);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .5), 0 16px 30px -16px rgb(96 128 224 / .8);
+}
+
+/* Filter chips. The selected one keeps its dark fill — that contrast is
+   deliberate — and gains a rim and a glow so it reads as a raised
+   object inside the capsule. */
+.work-section .filter:hover,
+.header-filters .filter:hover{
+  background: rgb(226 236 255 / .1);
+  border-color: rgb(255 255 255 / .2);
+  color: #fff;
+}
+.work-section .filter.active,
+.work-section .filter.is-active,
+.header-filters .filter.active,
+.header-filters .filter.is-active{
+  /* An explicit transparent border, because the rim gradient is painted in
+     the border box. Where the width is 0 the border and padding boxes are
+     the same rect and there is no edge for the rim to land on. */
+  border: 1px solid transparent;
+  background-color: var(--ink-surface);
+  background-image: var(--glass-fill-lift), var(--glass-rim), var(--glass-grain);
+  background-size: 100% 100%, 100% 100%, 160px 160px;
+  background-origin: border-box, border-box, border-box;
+  background-clip: padding-box, border-box, padding-box;
+  -webkit-background-clip: padding-box, border-box, padding-box;
+  background-repeat: no-repeat, no-repeat, repeat;
+  border-color: transparent;
+  color: #fff;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .38), 0 14px 30px -18px rgb(96 128 224 / .7);
+}
+
+/* The arrow on a project card is a glass ring rather than an outlined circle. */
+.work-section .project-arrow{
+  background-image: var(--glass-fill-dark), var(--glass-grain);
+  background-size: 100% 100%, 160px 160px;
+  background-color: rgb(7 10 20 / .42);
+  /* v2.css sets border:0 on this element. The rim needs a border box. */
+  border: 1px solid rgb(255 255 255 / .26);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .3), 0 12px 26px -16px rgb(0 0 0 / .8);
+}
+.work-section .project-card:hover .project-arrow{
+  background: var(--blue);
+  border-color: transparent;
+  color: #fff;
+}
+
+/* The mobile menu is a full-width sheet, and styles.css selects it as
+   .mobile-menu:not([hidden]) — two classes, so the shared recipe above
+   cannot reach it. It also sits over an opaque .menu-backdrop, which
+   means a backdrop-filter would blur a flat colour: a full-screen
+   compositing layer for no visible gain. So it gets fill, rim, grain
+   and sheen, and keeps a solid floor for the menu's own text. */
+.mobile-menu:not([hidden]){
+  border: 1px solid rgb(255 255 255 / .12);
+  background-color: rgb(11 16 32 / .92);
+  background-image: var(--glass-fill-dark), var(--glass-rim-dim), var(--glass-grain);
+  background-size: 100% 100%, 100% 100%, 160px 160px;
+  background-origin: border-box, border-box, border-box;
+  background-clip: padding-box, border-box, padding-box;
+  -webkit-background-clip: padding-box, border-box, padding-box;
+  background-repeat: no-repeat, no-repeat, repeat;
+  /* The first pass put this element in the blur group. Turn it off: the
+     backdrop behind the menu is an opaque .menu-backdrop. */
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .2), 0 30px 70px -30px rgb(0 0 0 / .9);
+}
+
+/* ============================================================
+   Glass over photography
+   ------------------------------------------------------------
+   An image frame has no fill to clip a rim into, so its rim is an
+   inset ring instead: same read, no layout change, and nothing for
+   the browser to re-composite. The centred card is the brightest
+   object in the rail and the neighbours sit back.
+   ============================================================ */
+.work-section .project-open{
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / .10),
+    inset 0 1px 0 rgb(255 255 255 / .16),
+    0 20px 44px -30px rgb(0 0 0 / .8);
+  transition: transform .45s cubic-bezier(.2, .7, .1, 1), box-shadow .45s cubic-bezier(.2, .7, .1, 1);
+}
+.work-section .project-card.is-current .project-open{
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / .34),
+    inset 0 1px 0 rgb(255 255 255 / .5),
+    0 34px 72px -34px rgb(96 128 224 / .55),
+    0 10px 24px -16px rgb(0 0 0 / .8);
+}
+.work-section .project-card:hover .project-open{
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / .46),
+    inset 0 1px 0 rgb(255 255 255 / .6),
+    0 44px 88px -34px rgb(96 128 224 / .62),
+    0 12px 26px -16px rgb(0 0 0 / .85);
+}
+.about-image{
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / .22),
+    30px 30px 0 #c8d1fb,
+    0 34px 70px -34px rgb(96 128 224 / .5);
+}
+.about-image:hover{
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / .4),
+    34px 34px 0 #c8d1fb,
+    var(--glass-lift-lg);
+}
+
+/* ============================================================
+   Chrome
+   ------------------------------------------------------------
+   A light scrollbar on a navy page is the one piece of default
+   chrome the palette never reached.
+   ============================================================ */
+html{scrollbar-color: rgb(142 160 255 / .34) rgb(8 12 24)}
+::-webkit-scrollbar{width:11px;height:11px}
+::-webkit-scrollbar-track{background:rgb(8 12 24)}
+::-webkit-scrollbar-thumb{
+  background:rgb(142 160 255 / .3);
+  border:2px solid rgb(8 12 24);
+  border-radius:999px;
+}
+::-webkit-scrollbar-thumb:hover{background:rgb(142 160 255 / .5)}
+
+/* Focus rings were the brand blue on navy, which lands near 2.6:1 against
+   the canvas — below the 3:1 a focus indicator is supposed to clear.
+   The lighter periwinkle clears it comfortably and still reads as brand. */
+*:focus-visible{
+  outline: 2px solid rgb(159 176 255 / .95);
+  outline-offset: 3px;
+}
+/* On top of the glass the offset ring lands on the page, not the panel,
+   so it gets a halo to keep it visible over busy photography. */
+.project-open:focus-visible,
+.project-meta a:focus-visible,
+.contact-form :focus-visible{
+  outline-color: rgb(198 209 255 / .98);
+}
+
+/* ---------- Reduced motion ----------
+   The new hover lifts join the list of things that are switched off. */
+@media (prefers-reduced-motion: reduce){
+  .header-cta:hover,
+  .button-dark:hover,
+  .button-blue:hover,
+  .cs-discuss:hover,
+  .social-fab:hover,
+  .filter:hover,
+  .work-section .project-card:hover .project-open,
+  .approach-section .process-card:hover{
+    transform: none;
+  }
+}
+
+/* ---------- Fallback for the rim ----------
+   background-clip is what makes the rim a 1px edge instead of a wash over
+   the whole panel. Where it is unsupported the second layer would flood
+   the surface, so it is dropped and the panel keeps a plain hairline. */
+@supports not ((background-clip: border-box) or (-webkit-background-clip: border-box)){
+  .glass,
+  .site-header,
+  .mobile-menu,
+  .filter-bar,
+  .contact-form,
+  .footer-status,
+  .social-fab,
+  .cs-tile,
+  .cs-spec,
+  .cs-quote,
+  .project-meta,
+  .footer-back span,
+  .work-section .filter.active,
+  .work-section .filter.is-active{
+    background-image: var(--glass-fill);
+    border-color: rgb(255 255 255 / .2);
+  }
+}
