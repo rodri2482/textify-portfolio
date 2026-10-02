@@ -75,7 +75,6 @@ window.addEventListener('resize', highlightNav, { passive: true });
 highlightNav();
 
 const filters = document.querySelectorAll('.filter');
-const cards = document.querySelectorAll('.project-card');
 filters.forEach(button => button.addEventListener('click', () => {
   const selection = button.dataset.filter;
   // Match on the filter value, not on element identity: the same filter exists
@@ -86,61 +85,246 @@ filters.forEach(button => button.addEventListener('click', () => {
     item.classList.toggle('active', active);
     item.setAttribute('aria-pressed', String(active));
   });
-  cards.forEach(card => { card.hidden = selection !== 'all' && !card.dataset.category.split(' ').includes(selection); });
+  // Queried live rather than cached: the rail adds a looping copy of every
+  // card and those have to be filtered alongside the originals.
+  document.querySelectorAll('.project-card').forEach(card => {
+    card.hidden = selection !== 'all' && !card.dataset.category.split(' ').includes(selection);
+  });
 }));
 
 /* ---------- Project rail ----------
-   A scroll-snap carousel: the centred card is the active one. Snapping
-   handles the movement, so this only tracks which card is nearest the
-   centre and mirrors that into the counter. Only the home page has a rail. */
+   A scroll-snap carousel that walks itself through the projects. Snapping
+   already supplies momentum, touch and keyboard scrolling, so this only
+   decides where the rail should rest: it eases each glide by hand, mirrors
+   the active card into the counter and the progress bar, and keeps exactly
+   one dwell timer alive at a time.
+
+   The wrap is invisible because the rail is padded by half a viewport: a
+   card and its copy at the far end sit in the same place on screen, so
+   looping is a scroll position swap nobody can see.
+
+   Only the home page has a rail, so the whole block is optional. */
 const rail = document.getElementById('project-grid');
 if (rail) {
+  /* ---------- Carousel timing: change these two numbers ----------
+     DWELL_MS  how long a project holds the centre before the next slides
+               in. 120000ms is two minutes. To retime it without touching
+               this file, put data-dwell on the rail in the markup:
+               <div class="project-grid" data-dwell="45000" ...>
+     GLIDE_MS  how long one slide takes. Longer reads as more cinematic. */
+  const DWELL_MS = Number(rail.dataset.dwell) || 120000;
+  const GLIDE_MS = Number(rail.dataset.glide) || 1100;
+
+  const railHost = rail.closest('section') || document.body;
   const railCount = document.getElementById('rail-count');
-  let railIndex = 0;
+  const progressBar = document.getElementById('rail-progress-bar');
+  const toggle = document.getElementById('rail-toggle');
+  const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const hoverQuery = window.matchMedia('(hover: hover) and (pointer: fine)');
 
-  const visibleCards = () => [...rail.querySelectorAll('.project-card')].filter(c => !c.hidden);
+  // Every card in the rail, originals and looping copies alike.
+  const strip = () => [...rail.querySelectorAll('.project-card')];
+  const isClone = card => card.classList.contains('is-clone');
+  const realCards = () => strip().filter(card => !isClone(card));
+  const visibleCards = () => realCards().filter(card => !card.hidden);
+  const projectOf = card => Number(card.dataset.project);
 
-  /* Rect-delta rather than offsetLeft: the rail is not the offsetParent of its
-     cards, so offsetLeft resolved against a further ancestor and every scroll
-     landed in the wrong place. */
-  const scrollToCard = (card, behavior = 'smooth') => {
-    if (!card) return;
+  realCards().forEach((card, index) => { card.dataset.project = String(index); });
+
+  /* Where a card sits before any of it is painted, measured from the rail's
+     own box so the numbers do not move when a card is turned in 3D. */
+  const layoutCentreOf = card => card.offsetLeft + rail.clientLeft + card.offsetWidth / 2;
+
+  /* Layout maths, not painted maths. Reading offsetLeft skips the 3D transform
+     a card is carrying right now, so the same card asks for the same scroll
+     position every time - whether it is currently a neighbour seen edge on, or
+     the copy the loop is about to swap in. Measuring painted rects instead put
+     the landing spot a whole 46px apart at the seam, because a rotated card's
+     projection is not centred on its own box. The rect fallback keeps the rail
+     honest if the cards ever stop resolving against the rail itself. */
+  const scrollLeftFor = card => {
+    if (card.offsetParent === rail) return layoutCentreOf(card) - rail.clientWidth / 2;
     const railRect = rail.getBoundingClientRect();
     const cardRect = card.getBoundingClientRect();
-    const delta = (cardRect.left - railRect.left) - (rail.clientWidth - cardRect.width) / 2;
-    rail.scrollBy({ left: delta, behavior });
+    return rail.scrollLeft + (cardRect.left - railRect.left) - (rail.clientWidth - cardRect.width) / 2;
   };
 
-  const setActiveCard = index => {
+  /* A copy has to sit in the same reveal state as the card it was made from.
+     The scroll reveal watches the originals as they come into view, so without
+     this a copy can still be blurred at the moment the loop swaps a sharp
+     original out for its copy, and the hand-over shows up as a blur. Classes
+     only, so nothing here reads back a box. */
+  const syncReveal = () => {
+    const originals = new Map(realCards().map(card => [projectOf(card), card]));
+    strip().forEach(card => {
+      const original = originals.get(projectOf(card));
+      if (original) card.classList.toggle('is-visible', original.classList.contains('is-visible'));
+    });
+  };
+
+  const setActive = index => {
+    const cards = strip();
+    const active = cards[index];
+    if (!active) return;
+    railIndex = index;
+    const project = projectOf(active);
+    // Every copy of the project lights up, not just the one in view: when the
+    // loop swaps a card for its copy, both have to look the same.
+    cards.forEach(card => card.classList.toggle('is-current', projectOf(card) === project));
+    syncReveal();
     const list = visibleCards();
-    // Clear across every card, not just visible ones: a card hidden by a filter
-    // would otherwise keep a stale is-current and report a 0x0 rect.
-    rail.querySelectorAll('.project-card').forEach(card => card.classList.remove('is-current'));
-    if (!list.length) {
-      railCount.textContent = '00 / 00';
+    const position = list.findIndex(card => projectOf(card) === project);
+    railCount.textContent = list.length && position >= 0
+      ? `${String(position + 1).padStart(2, '0')} / ${String(list.length).padStart(2, '0')}`
+      : '00 / 00';
+  };
+
+  // Next card in the chosen direction that a filter has left standing.
+  const nextVisible = (from, direction) => {
+    const cards = strip();
+    const count = cards.length;
+    for (let step = 1; step <= count; step += 1) {
+      const index = (((from + direction * step) % count) + count) % count;
+      if (!cards[index].hidden) return index;
+    }
+    return from;
+  };
+
+  let glideFrame = 0;
+  const stopGlide = () => {
+    if (!glideFrame) return;
+    cancelAnimationFrame(glideFrame);
+    glideFrame = 0;
+  };
+
+  // Symmetric ease: leaves slowly, arrives slowly. That long tail is what
+  // makes a move read as a camera move instead of a scroll.
+  const easeInOut = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+  const glideTo = (card, onArrive) => {
+    stopGlide();
+    const to = scrollLeftFor(card);
+    const from = rail.scrollLeft;
+    if (motionQuery.matches || !Number.isFinite(to) || Math.abs(to - from) < 1) {
+      rail.scrollLeft = to;
+      onArrive();
       return;
     }
-    railIndex = Math.max(0, Math.min(index, list.length - 1));
-    list[railIndex].classList.add('is-current');
-    railCount.textContent = `${String(railIndex + 1).padStart(2, '0')} / ${String(list.length).padStart(2, '0')}`;
+    const startedAt = performance.now();
+    const step = now => {
+      const elapsed = Math.min(1, (now - startedAt) / GLIDE_MS);
+      rail.scrollLeft = from + (to - from) * easeInOut(elapsed);
+      // Cards drifting into view are being revealed as the rail moves; keep
+      // their copies in step frame by frame, not only when the move ends.
+      syncReveal();
+      if (elapsed < 1) { glideFrame = requestAnimationFrame(step); return; }
+      glideFrame = 0;
+      // Land exactly on the snap point so the browser never nudges it after us.
+      rail.scrollLeft = to;
+      onArrive();
+    };
+    glideFrame = requestAnimationFrame(step);
+  };
+
+  let railIndex = 0;
+  let inView = false;
+  let hovering = false;
+  let dragging = false;
+  let userPaused = false;
+  let dwellTimer = 0;
+  let progressFrame = 0;
+  let dwellStartedAt = 0;
+  let dwellLeft = DWELL_MS;
+
+  const autoplayAllowed = () => !userPaused && !motionQuery.matches && inView && !hovering
+    && !dragging && !document.hidden && visibleCards().length > 1;
+
+  const paintProgress = ratio => {
+    if (progressBar) progressBar.style.transform = `scaleX(${ratio})`;
+  };
+
+  // One timer at a time, always: every entry point clears what was running
+  // before it schedules anything of its own.
+  const clearTimers = () => {
+    if (dwellTimer) { clearTimeout(dwellTimer); dwellTimer = 0; }
+    if (progressFrame) { cancelAnimationFrame(progressFrame); progressFrame = 0; }
+  };
+
+  const tickProgress = () => {
+    const ratio = Math.min(1, (performance.now() - dwellStartedAt) / DWELL_MS);
+    paintProgress(ratio.toFixed(4));
+    progressFrame = ratio < 1 ? requestAnimationFrame(tickProgress) : 0;
+  };
+
+  const startDwell = (fromZero = true) => {
+    clearTimers();
+    dwellLeft = fromZero ? DWELL_MS : Math.max(0, dwellLeft);
+    dwellStartedAt = performance.now() - (DWELL_MS - dwellLeft);
+    if (!autoplayAllowed()) { paintProgress(((DWELL_MS - dwellLeft) / DWELL_MS).toFixed(4)); return; }
+    dwellTimer = setTimeout(() => {
+      dwellTimer = 0;
+      progressFrame = 0;
+      advance();
+    }, dwellLeft);
+    progressFrame = requestAnimationFrame(tickProgress);
+  };
+
+  const pauseDwell = () => {
+    if (dwellTimer) dwellLeft = Math.max(0, DWELL_MS - (performance.now() - dwellStartedAt));
+    clearTimers();
+  };
+
+  const settleAt = index => {
+    const cards = strip();
+    const active = cards[index];
+    if (!active) return;
+    let target = index;
+    if (isClone(active)) {
+      target = cards.findIndex(card => !isClone(card) && projectOf(card) === projectOf(active));
+      const left = scrollLeftFor(cards[target]);
+      const reachable = left >= 0 && left <= rail.scrollWidth - rail.clientWidth;
+      // Identical pixels: a copy and its original occupy the same spot, so
+      // swapping the scroll position is what makes the loop seamless. If the
+      // original cannot reach the centre on this layout the copy stays put,
+      // which looks exactly the same.
+      if (reachable) { rail.scrollLeft = left; setActive(target); startDwell(true); return; }
+    }
+    setActive(target);
+    startDwell(true);
+  };
+
+  const goTo = index => {
+    const card = strip()[index];
+    if (!card || card.hidden) return;
+    setActive(index);                       // counter and highlight lead the move
+    paintProgress('0');
+    glideTo(card, () => settleAt(index));
+  };
+
+  const advance = () => {
+    if (visibleCards().length < 2) { startDwell(true); return; }
+    const next = nextVisible(railIndex, 1);
+    if (next !== railIndex) goTo(next);
   };
 
   // Nearest-to-centre wins, so the active card follows a real drag or flick.
   let railQueued = false;
   const syncRail = () => {
     railQueued = false;
-    const list = visibleCards();
-    if (!list.length) { setActiveCard(0); return; }
-    const railBox = rail.getBoundingClientRect();
-    const centre = railBox.left + rail.clientWidth / 2;
+    if (glideFrame) return;                 // our own glide is not a drag
+    const list = strip().filter(card => !card.hidden);
+    if (!list.length) return;
+    // Measured against scroll position, the same way scrollLeftFor works. Asking
+    // painted rects instead let the 3D tilt of a card tip the decision and name
+    // a project the rail was not actually resting on.
+    const railCentre = rail.scrollLeft + rail.clientWidth / 2;
     let best = 0;
     let bestDistance = Infinity;
-    list.forEach((card, i) => {
-      const box = card.getBoundingClientRect();
-      const d = Math.abs(box.left + box.width / 2 - centre);
-      if (d < bestDistance) { bestDistance = d; best = i; }
+    list.forEach((card, index) => {
+      const distance = Math.abs(layoutCentreOf(card) - railCentre);
+      if (distance < bestDistance) { bestDistance = distance; best = index; }
     });
-    setActiveCard(best);
+    setActive(best);
   };
 
   const queueRail = () => {
@@ -149,26 +333,191 @@ if (rail) {
     requestAnimationFrame(syncRail);
   };
 
-  // No prev/next buttons: the rail is driven by scrolling, swiping and the
-  // arrow keys while it has focus.
+  /* Seamless wrap. The rail is padded by half a viewport so a card can only
+     sit in the centre with room on both sides, so the strip needs copies at
+     each end: copies of the tail in front, copies of the head behind. Only as
+     many as the viewport can actually show are made. */
+  const cloneSpan = () => {
+    const card = visibleCards()[0] || realCards()[0];
+    if (!card || !card.offsetWidth) return 1;
+    const gap = parseFloat(getComputedStyle(rail).columnGap || getComputedStyle(rail).gap) || 0;
+    const step = card.offsetWidth + gap;
+    // Cards that fit to one side of centre, rounded up for the half a card the
+    // edge of the viewport leaves showing, plus one to spare. The spare is what
+    // makes the loop honest: when the rail comes to rest on a copy at either
+    // end, the card the eye expects beyond it is a copy too, so the strip never
+    // shows the edge of the world as the carousel wraps.
+    return Math.max(1, Math.ceil(rail.clientWidth / 2 / step)) + 1;
+  };
+
+  const copyOf = card => {
+    const copy = card.cloneNode(true);
+    copy.classList.add('is-clone');
+    copy.removeAttribute('id');
+    copy.setAttribute('aria-hidden', 'true');
+    // inert keeps a copy out of the tab order and off the pointer, so looping
+    // never doubles the links a keyboard or screen reader walks through.
+    if ('inert' in copy) copy.inert = true;
+    copy.querySelectorAll('a, button').forEach(el => el.setAttribute('tabindex', '-1'));
+    return copy;
+  };
+
+  const syncClones = () => {
+    strip().filter(isClone).forEach(copy => copy.remove());
+    const cards = realCards();
+    const first = cards[0];
+    if (!first) return;
+    const span = cloneSpan();
+    // The same number of copies at each end, so the strip reads the same
+    // whichever side of the world the rail is resting on. The tail goes in
+    // back to front, otherwise the copy nearest the first project would be the
+    // last project and stepping back would land on the wrong card.
+    for (let offset = span; offset >= 1; offset -= 1) {
+      const source = cards[cards.length - offset];
+      if (!source) break;
+      rail.insertBefore(copyOf(source), first);
+    }
+    for (let offset = 0; offset < span && offset < cards.length; offset += 1) {
+      rail.appendChild(copyOf(cards[offset]));
+    }
+  };
+
   rail.addEventListener('scroll', queueRail, { passive: true });
+  rail.addEventListener('dragstart', event => event.preventDefault());
+
   rail.addEventListener('keydown', event => {
     if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+    const next = nextVisible(railIndex, event.key === 'ArrowRight' ? 1 : -1);
+    if (next === railIndex) return;
     event.preventDefault();
-    scrollToCard(visibleCards()[railIndex + (event.key === 'ArrowRight' ? 1 : -1)]);
+    goTo(next);                             // a manual move restarts the wait
+  });
+
+  /* Dragging the rail. A finger already scrolls it, but nothing moves a rail
+     for a click and drag, and the transport buttons are gone, so the mouse
+     gets the same gesture. Once it has travelled a few pixels it counts as a
+     drag, and the case-study link under the cursor is left alone. */
+  let dragX = 0;
+  let dragScroll = 0;
+  let dragTravel = 0;
+  let swallowClick = false;
+  const dropDraggedClick = event => {
+    if (!swallowClick) return;
+    swallowClick = false;
+    event.preventDefault();
+    event.stopPropagation();
+  };
+  window.addEventListener('click', dropDraggedClick, true);
+
+  // Dragging is a manual move too: hold the rail still while it is in a hand,
+  // then start counting the wait again from zero when it is released.
+  const endDrag = () => {
+    if (!dragging) return;
+    dragging = false;
+    rail.classList.remove('is-dragging');
+    stopGlide();
+    if (dragTravel > 6) swallowClick = true;    // that was a drag, not a click
+    startDwell(true);
+  };
+  rail.addEventListener('pointerdown', event => {
+    if (event.button) return;
+    dragging = true;
+    swallowClick = false;                       // a fresh gesture clears any stale swallow
+    dragX = event.clientX;
+    dragScroll = rail.scrollLeft;
+    dragTravel = 0;
+    pauseDwell();
+    if (event.pointerType === 'mouse') rail.classList.add('is-dragging');
+  });
+  // Tracked on the window rather than by capturing the pointer: a capture
+  // retargets the click that follows to the rail, and the case study under the
+  // cursor would stop opening.
+  window.addEventListener('pointermove', event => {
+    if (!dragging || event.pointerType !== 'mouse') return;
+    const travel = event.clientX - dragX;
+    if (Math.abs(travel) > 6) dragTravel = Math.abs(travel);
+    rail.scrollLeft = dragScroll - travel;
+  });
+  window.addEventListener('pointerup', endDrag);
+  window.addEventListener('pointercancel', endDrag);
+
+  if (hoverQuery.matches) {
+    rail.addEventListener('mouseenter', () => { hovering = true; pauseDwell(); });
+    rail.addEventListener('mouseleave', () => { hovering = false; startDwell(false); });
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) pauseDwell();
+    else if (autoplayAllowed()) startDwell(false);
   });
 
   // A filter change can hide the active card, so re-centre on what is left.
   filters.forEach(button => button.addEventListener('click', () => {
     setTimeout(() => {
       const list = visibleCards();
-      setActiveCard(0);
-      scrollToCard(list[0], 'auto');
+      const current = strip()[railIndex];
+      const target = list.find(card => projectOf(card) === projectOf(current)) || list[0];
+      if (!target) { railCount.textContent = '00 / 00'; return; }
+      rail.scrollLeft = scrollLeftFor(target);
+      setActive(strip().indexOf(target));
+      paintProgress('0');
+      startDwell(true);
     }, 0);
   }));
 
-  setActiveCard(0);
-  requestAnimationFrame(() => scrollToCard(visibleCards()[0], 'auto'));
+  if (toggle) {
+    toggle.addEventListener('click', () => {
+      userPaused = !userPaused;
+      toggle.setAttribute('aria-pressed', String(userPaused));
+      toggle.setAttribute('aria-label', userPaused ? 'Play the project carousel' : 'Pause the project carousel');
+      if (userPaused) pauseDwell(); else startDwell(true);
+    });
+  }
+
+  const applyMotionPreference = () => {
+    railHost.dataset.autoplay = motionQuery.matches ? 'off' : 'on';
+    if (motionQuery.matches) { pauseDwell(); paintProgress('0'); }
+  };
+  motionQuery.addEventListener('change', applyMotionPreference);
+
+  let resizeTimer = 0;
+  window.addEventListener('resize', () => {
+    if (resizeTimer) clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      resizeTimer = 0;
+      const project = projectOf(strip()[railIndex]);
+      syncClones();
+      const target = strip().find(card => !isClone(card) && projectOf(card) === project && !card.hidden)
+        || visibleCards()[0]
+        || strip()[0];
+      if (!target) return;
+      rail.scrollLeft = scrollLeftFor(target);
+      setActive(strip().indexOf(target));
+      paintProgress('0');
+    }, 160);
+  });
+
+  const railObserver = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      inView = entry.isIntersecting;
+      if (inView) startDwell(true);
+      else pauseDwell();
+    });
+  }, { threshold: 0.2 });
+  railObserver.observe(rail);
+
+  applyMotionPreference();
+
+  // Copies go in before the first paint, so the rail opens on project one
+  // rather than on a copy of it.
+  requestAnimationFrame(() => {
+    syncClones();
+    const first = realCards()[0];
+    if (!first) return;
+    rail.scrollLeft = scrollLeftFor(first);
+    setActive(strip().indexOf(first));
+    paintProgress('0');
+  });
 }
 
 /* ---------- Contextual header ----------

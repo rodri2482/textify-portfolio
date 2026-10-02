@@ -35,6 +35,14 @@ Each store currently supplies one campaign image, so the square detail tile re-c
 
 The hero layers the supplied portrait over a subtle dark gradient, with gentle portrait movement. The abstract rings and floating badge have been removed. Sections reveal on scroll. Reduced-motion settings disable decorative animation. Filters, project panels, service and FAQ disclosures, and the mobile menu are interactive.
 
+## The project rail
+
+The rail runs itself: it holds each project for `data-dwell="120000"` (two minutes) then glides to the next over `data-glide="1100"`, both set on `#project-grid`. A progress line above the rail and a pause control under it show where it is in the wait; hovering the rail, touching it, pressing an arrow key, switching tabs or filtering all interrupt the timer and start the wait again when you let go. Arrow keys move one project at a time and wrap at both ends. The mouse can also drag the rail, which leaves the native touch scrolling alone and steps over the case-study link once a drag has clearly begun.
+
+Reduced motion switches the whole thing off: no autoplay, no progress line, no pause control, instant navigation.
+
+Looping is done with copies of the cards at each end of the strip, not by rewinding: the rail glides onto a copy exactly as it would onto the original and then swaps the scroll position, which is invisible because the two occupy the same pixels. Three details keep that true, each commented in `app.js`: landing spots come from layout rather than painted rectangles (a card turned in 3D projects off-centre), a copy is always in the same scroll-reveal state as the card it was made from (otherwise the swap hands over a blurred card), and copies are `inert` so they never double the links a keyboard walks through.
+
 ## Visual layer
 
 `liquid.css` carries the current look: a dark-navy canvas with a Liquid Glass treatment, and scroll-driven storytelling animations where the browser supports `animation-timeline: view()` (with the IntersectionObserver reveal as the fallback elsewhere). It is loaded last and is entirely self-contained — delete its single `<link>` to fall back to the editorial system in `styles.css` + `v2.css`.
