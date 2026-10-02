@@ -94,8 +94,6 @@ filters.forEach(button => button.addEventListener('click', () => {
    handles the movement, so this only tracks which card is nearest the
    centre and mirrors that into the counter and the arrow buttons. */
 const rail = document.getElementById('project-grid');
-const railPrev = document.getElementById('rail-prev');
-const railNext = document.getElementById('rail-next');
 const railCount = document.getElementById('rail-count');
 let railIndex = 0;
 
@@ -119,14 +117,11 @@ const setActiveCard = index => {
   rail.querySelectorAll('.project-card').forEach(card => card.classList.remove('is-current'));
   if (!list.length) {
     railCount.textContent = '00 / 00';
-    railPrev.disabled = railNext.disabled = true;
     return;
   }
   railIndex = Math.max(0, Math.min(index, list.length - 1));
   list[railIndex].classList.add('is-current');
   railCount.textContent = `${String(railIndex + 1).padStart(2, '0')} / ${String(list.length).padStart(2, '0')}`;
-  railPrev.disabled = railIndex === 0;
-  railNext.disabled = railIndex === list.length - 1;
 };
 
 // Nearest-to-centre wins, so the active card follows a real drag or flick.
@@ -153,15 +148,14 @@ const queueRail = () => {
   requestAnimationFrame(syncRail);
 };
 
+// No prev/next buttons: the rail is driven by scrolling, swiping and the
+// arrow keys while it has focus.
 rail.addEventListener('scroll', queueRail, { passive: true });
 rail.addEventListener('keydown', event => {
   if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
   event.preventDefault();
   scrollToCard(visibleCards()[railIndex + (event.key === 'ArrowRight' ? 1 : -1)]);
 });
-
-railPrev.addEventListener('click', () => scrollToCard(visibleCards()[railIndex - 1]));
-railNext.addEventListener('click', () => scrollToCard(visibleCards()[railIndex + 1]));
 
 // A filter change can hide the active card, so re-centre on what is left.
 filters.forEach(button => button.addEventListener('click', () => {
