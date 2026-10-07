@@ -991,7 +991,8 @@ body{
 .footer-status::before,
 .social-fab::before,
 .contact-form::before,
-.cs-quote::before{
+.cs-quote::before,
+.project-meta::before{
   content: "";
   position: absolute;
   inset: 0;
@@ -1127,14 +1128,40 @@ body{
   color: #fff;
 }
 
-/* The pause control is the smallest glass object on the page, so it
-   carries the same recipe at the smallest scale. */
+/* The counter and the pause control sit together in a small capsule.
+   The control inside it is already glass; without the capsule they read
+   as two unrelated objects floating on the section. */
+.work-section .rail-status{
+  /* This row is laid out as a full-width centred flex line. The capsule has
+     to hug its two children instead, so width:fit-content shrinks it and
+     the auto margins from the original rule still centre it. */
+  width: fit-content;
+  padding: 5px 6px 5px 13px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background-color: rgb(7 10 20 / .34);
+  background-image: var(--glass-fill-dark), var(--glass-rim-dim), var(--glass-grain);
+  background-size: 100% 100%, 100% 100%, 160px 160px;
+  background-origin: border-box, border-box, border-box;
+  background-clip: padding-box, border-box, padding-box;
+  -webkit-background-clip: padding-box, border-box, padding-box;
+  background-repeat: no-repeat, no-repeat, repeat;
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  backdrop-filter: blur(18px) saturate(150%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .2), 0 16px 34px -24px rgb(0 0 0 / .9);
+}
+/* The pause control is the smallest glass object on the page. It now sits
+   inside the .rail-status capsule, so it is a lighter pane of the same
+   material rather than a surface of its own: the flat fill underneath is
+   reset, otherwise it stacks under the gradient and goes opaque. */
 .rail-toggle{
+  background-color: transparent;
   background-image: linear-gradient(168deg, rgb(226 236 255 / .18), rgb(226 236 255 / .06));
   border: 1px solid rgb(255 255 255 / .22);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / .34), 0 10px 24px -14px rgb(96 128 224 / .6);
 }
 .rail-toggle:hover{
+  background-color: transparent;
   background-image: linear-gradient(168deg, rgb(226 236 255 / .28), rgb(226 236 255 / .1));
   border-color: rgb(255 255 255 / .44);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / .5), 0 16px 30px -16px rgb(96 128 224 / .8);
@@ -1214,6 +1241,54 @@ body{
    the browser to re-composite. The centred card is the brightest
    object in the rail and the neighbours sit back.
    ============================================================ */
+
+/* ---------- Glass labels over the artwork ----------
+   The caption and the top labels sit directly on the photography, so
+   they are the surfaces most at risk of reading as flat text. Both take
+   the same dark glass recipe as .project-meta: the caption already did,
+   the labels below now do too, and both get the specular sheen. */
+.work-section .real-art-top span{
+  /* The row is space-between across the full frame width, so the pills
+     have to hug their own text. A fixed height keeps the two labels
+     equal even though the second is set one size smaller. */
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 11px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background-color: rgb(7 10 20 / .72);
+  background-image: var(--glass-fill-dark), var(--glass-rim-dim), var(--glass-grain);
+  background-size: 100% 100%, 100% 100%, 160px 160px;
+  background-origin: border-box, border-box, border-box;
+  background-clip: padding-box, border-box, padding-box;
+  -webkit-background-clip: padding-box, border-box, padding-box;
+  background-repeat: no-repeat, no-repeat, repeat;
+  /* No backdrop-filter here. These labels exist to hold white text over
+     photography, and the fill alpha is what achieves that, not a blur of
+     the photograph behind it. A blur would add 24 compositing layers to a
+     rail that animates continuously (12 labels x 6 clones) in exchange for
+     a difference nobody can see. */
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .3), 0 12px 26px -18px rgb(0 0 0 / .9);
+  transition: background-color .35s ease, box-shadow .35s ease;
+}
+/* The right-hand label (FASHION / 01) is a secondary marker: same
+   material, one step quieter, so the two do not compete. It still has to
+   clear 4.5:1 as body text — it is 9px, not a decorative glyph — so the
+   quiet is carried by the rim and the fill only drops a little. */
+.work-section .real-art-top span:last-child{
+  background-color: rgb(7 10 20 / .66);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .22), 0 10px 22px -18px rgb(0 0 0 / .85);
+}
+/* On the narrow cards the two pills together are wider than the row. The
+   row is inset 32px a side by styles.css, which leaves 176px inside a
+   240px mobile card against a 191px pair, so the second pill hung over
+   the frame edge. Tightening the inset and the padding gives the pair
+   room without shrinking the label type. */
+@media (max-width: 900px){
+  .work-section .real-art-top{left: 14px; right: 14px}
+  .work-section .real-art-top span{padding: 0 9px}
+}
 .work-section .project-open{
   box-shadow:
     inset 0 0 0 1px rgb(255 255 255 / .10),
@@ -1312,8 +1387,14 @@ html{scrollbar-color: rgb(142 160 255 / .34) rgb(8 12 24)}
   .project-meta,
   .footer-back span,
   .work-section .filter.active,
-  .work-section .filter.is-active{
+  .work-section .filter.is-active,
+  .work-section .rail-status,
+  .work-section .real-art-top span{
     background-image: var(--glass-fill);
     border-color: rgb(255 255 255 / .2);
   }
+  /* These two carry dark glass on purpose, so their fallback is the dark
+     fill, not the pale one. */
+  .work-section .rail-status{background-image: var(--glass-fill-dark)}
+  .work-section .real-art-top span{background-image: var(--glass-fill-dark)}
 }
