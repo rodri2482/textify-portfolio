@@ -6,6 +6,30 @@ A responsive ecommerce portfolio built around the supplied founder portrait and 
 
 Open `index.html` in a browser, or upload the entire folder to a static host. All site code and image assets are included. Google Fonts require an internet connection; system fallbacks are provided.
 
+Or serve the folder over HTTP, which is what the deployed site does:
+
+```
+python3 -m http.server 8000
+```
+
+## Publishing
+
+The site is published with GitHub Pages from the **`main` branch, root folder**, at:
+
+**https://rodri2482.github.io/textify-portfolio/**
+
+Every push to `main` triggers a rebuild, and the change is usually live within a minute. To publish, open a pull request, merge it to `main`, and wait for the build. Nothing is built at deploy time — the six case-study pages in `works/` are generated locally with `node tools/build-works.mjs` and committed, which is why the folder can be published straight from the branch.
+
+To check what is live and whether it built:
+
+```
+gh api repos/rodri2482/textify-portfolio/pages/builds/latest
+```
+
+The `commit` in that response is the commit currently published; compare it with `git rev-parse origin/main` to see whether a change has gone out yet.
+
+`.nojekyll` is present so GitHub serves the files exactly as they are, with no Jekyll processing. Every path in the markup is relative, so the site works at the project subpath above and at a custom domain without changes — add a `CNAME` file at the root to use one.
+
 ## Included work
 
 - [LauraVogue](https://lauravogue.com/) — `works/lauravogue.html`
