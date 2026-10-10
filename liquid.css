@@ -357,6 +357,12 @@ main section[id],section[id]{scroll-margin-top:124px}
   --navy-2:#121a30;
   --navy-3:#1b2745;
   --glass-tint: 214 226 248;
+  /* --font-mono is used by the rail counter and the case-study spec list, and
+     --glass-accent by the approach icons, but neither was ever declared: both
+     resolved to the initial value and fell back to the body face. Declared
+     here so the numerics read as numerics. */
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --glass-accent: #9eabff;
 }
 
 body{
@@ -1397,4 +1403,642 @@ html{scrollbar-color: rgb(142 160 255 / .34) rgb(8 12 24)}
      fill, not the pale one. */
   .work-section .rail-status{background-image: var(--glass-fill-dark)}
   .work-section .real-art-top span{background-image: var(--glass-fill-dark)}
+}
+/* ============================================================
+   Third pass — the 2026 refinement
+   ------------------------------------------------------------
+   Additive, like the two passes before it: everything from here
+   down is an override, so deleting this block returns the site to
+   the second-pass material with nothing else to change.
+
+   What it adds, in order:
+
+     foundation  the two tokens the file already referenced but
+                 never declared, plus the accent ramp
+     type        gradient display italics, balanced headlines,
+                 chip eyebrows, a repainted eyebrow rule
+     hero        an aurora field, a pointer spotlight, a rim-lit
+                 portrait, and an availability chip
+     chrome      a reading-progress hairline, a restyled ticker
+     rail        a counted progress bar and a light sweep
+     sections    animated disclosures, glass icon tiles, a lit
+                 statement band, a gradient wordmark
+     case study  the same treatment on the six works/ pages
+
+   Three rules carried over from the passes above:
+     1. No opacity < 1 and no filter on an ancestor of a glass
+        surface — it becomes a backdrop root and silently stops
+        the blur underneath. The aurora and the spotlight carry
+        their own opacity, and both are siblings of the content,
+        never ancestors of it.
+     2. Every new animation is transform-only, or off entirely
+        under prefers-reduced-motion.
+     3. Blur is only paid for where there is something behind the
+        surface to blur.
+   ============================================================ */
+
+:root{
+  /* The accent ramp. --blue stays the brand cobalt for fills; these three
+     are the lighter end, for type and edges that have to sit on navy. */
+  --accent: #8ea0ff;
+  --accent-bright: #c9d3ff;
+  --accent-deep: #5b6ef5;
+  --ease-out: cubic-bezier(.2, .7, .1, 1);
+  /* Dark chrome: date pickers, select popups, autofill and the default
+     scrollbar all follow this instead of painting white. */
+  color-scheme: dark;
+}
+
+/* ---------- Type ----------
+   Balanced headlines stop a two-line display setting from leaving one
+   short word alone on the last line. The <br>s in the hero and the
+   case-study headlines are explicit breaks, so balance only works
+   inside each of those lines — which is what we want. */
+h1, h2, h3{text-wrap: balance}
+
+/* The display italic is the one piece of ornament the brand has, so it
+   gets the gradient rather than a flat periwinkle: light travelling
+   across a serif reads as a highlight, not as a colour change.
+   -webkit-text-fill-color is what actually makes the text transparent —
+   `color: transparent` alone is ignored by the gradient clip in Safari. */
+@supports ((-webkit-background-clip: text) or (background-clip: text)){
+  .hero-v2 h1 em,
+  .section-heading h2 em,
+  .about-copy h2 em,
+  .faq-grid h2 em,
+  .contact-copy h2 em,
+  .statement p em,
+  .cs-headline em,
+  .cs-spec-word{
+    background-image: linear-gradient(102deg, var(--accent-bright) 0%, #ffffff 42%, var(--accent) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+}
+
+/* ---------- Eyebrows ----------
+   The leading rule was repinned to --ink-surface by the navy block, which
+   is the canvas colour — the dash was 26px of invisible. It is a gradient
+   that dies out to the right instead, so it reads as a lead-in. */
+.eyebrow .line{
+  background: linear-gradient(90deg, var(--accent), rgb(142 160 255 / 0));
+}
+/* Section eyebrows become chips. The hero's is excluded on purpose: it is a
+   full-width row with its own right-aligned end, and capping that in a pill
+   would fight the layout it is there to hold open. */
+.section-heading .eyebrow,
+.about-copy .eyebrow,
+.faq-grid .eyebrow,
+.contact-copy .eyebrow,
+.statement .eyebrow{
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 15px 7px 13px;
+  border-radius: 999px;
+  border: 1px solid rgb(255 255 255 / .13);
+  background: rgb(226 236 255 / .055);
+  color: #c2cceb;
+  font-size: 9.5px;
+  letter-spacing: .18em;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .16);
+}
+
+/* ============================================================
+   Hero
+   ------------------------------------------------------------
+   The two ::before/::after slots on .hero-v2 were free, so the
+   atmosphere costs no markup. ::before is the aurora, ::after the
+   pointer spotlight; both sit above the receding grid (z -1) and
+   below the portrait (z 3) and the copy (z 5).
+   ============================================================ */
+@media (prefers-reduced-motion: no-preference){
+  .hero-v2::before{
+    content: "";
+    position: absolute;
+    inset: -18% -12%;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(38% 44% at 74% 26%, rgb(96 124 255 / .30), transparent 68%),
+      radial-gradient(34% 40% at 20% 64%, rgb(139 92 255 / .20), transparent 70%),
+      radial-gradient(44% 46% at 54% 98%, rgb(46 140 255 / .16), transparent 72%);
+    /* Blurred once, then only moved: the blur is a static filter, so the
+       drift below stays a compositor transform and costs no repaint. */
+    filter: blur(44px);
+    animation: auroraDrift 34s var(--ease-out) infinite alternate;
+    will-change: transform;
+  }
+}
+@keyframes auroraDrift{
+  0%  {transform: translate3d(-2.5%, -1.5%, 0) scale(1.02)}
+  50% {transform: translate3d(2%, 2%, 0) scale(1.08)}
+  100%{transform: translate3d(-1%, 1%, 0) scale(1.03)}
+}
+
+/* The spotlight is painted from two custom properties app.js writes on the
+   hero, so the size, colour and falloff stay in CSS. It never exists on a
+   touch device: there is no hover to answer and a stray touchmove would
+   leave a pool of light stranded where the finger lifted. */
+.hero-v2::after{
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .5s ease;
+  background: radial-gradient(320px 320px at var(--spot-x, 68%) var(--spot-y, 34%),
+              rgb(198 212 255 / .10), transparent 70%);
+}
+.hero-v2.has-spot::after{opacity: 1}
+@media (hover: none){.hero-v2::after{display: none}}
+
+/* A cool rim light and a soft shadow, so the cut-out sits in the scene
+   instead of on top of it. Monochrome is the identity, so the grey stays. */
+.hero-v2 .portrait-stage img{
+  filter:
+    grayscale(1) contrast(1.09) brightness(1.03)
+    drop-shadow(0 0 46px rgb(112 140 255 / .22))
+    drop-shadow(16px 0 42px rgb(6 9 20 / .5));
+}
+
+.hero-chip{
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 15px;
+  border-radius: 999px;
+  font: 700 9.5px/1 var(--font);
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: #d5dcf5;
+  border: 1px solid rgb(255 255 255 / .16);
+  background: rgb(226 236 255 / .07);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .22);
+  white-space: nowrap;
+}
+.hero-chip b{color: var(--accent);font-size: 11px;line-height: 0}
+
+/* ============================================================
+   Chrome
+   ============================================================ */
+/* Reading progress. Fixed above the sticky pill (z 100) and only 2px, so
+   it reads as part of the window rather than as a control. app.js scales
+   the inner span; the bar itself is never measured. */
+.scroll-progress{
+  position: fixed;
+  inset: 0 0 auto;
+  height: 2px;
+  z-index: 120;
+  pointer-events: none;
+  background: rgb(255 255 255 / .07);
+}
+.scroll-progress span{
+  display: block;
+  height: 100%;
+  width: 100%;
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  background: linear-gradient(90deg, var(--accent-deep), var(--accent) 55%, var(--accent-bright));
+  box-shadow: 0 0 12px rgb(142 160 255 / .6);
+}
+
+/* The ticker was an opaque band cutting the page in two. As a hairlined,
+   edge-masked strip it reads as a rule the words travel along. */
+.ticker{
+  background: transparent;
+  border-block: 1px solid rgb(255 255 255 / .09);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
+}
+.ticker-track{color: #dbe2f8}
+.ticker-track b{color: var(--accent)}
+
+/* ============================================================
+   Rail
+   ============================================================ */
+.work-section .rail-count{
+  font-variant-numeric: tabular-nums;   /* 01/06 must not shuffle as it counts */
+  color: #dbe3fb;
+}
+.work-section .rail-progress{
+  position: relative;
+  height: 3px;
+  background: rgb(255 255 255 / .1);
+}
+.work-section .rail-progress span{
+  background: linear-gradient(90deg, var(--accent-deep), var(--accent) 55%, var(--accent-bright));
+  box-shadow: 0 0 14px rgb(142 160 255 / .55);
+}
+/* Six projects, so five hairlines cut the bar into six cells: the fill now
+   reads as a counter instead of only as a timer. The separators are painted
+   in the section colour, so they read as gaps rather than as ticks. */
+.work-section .rail-progress::after{
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(90deg,
+    transparent 0 calc(100% / 6 - 2px),
+    rgb(11 16 32 / .85) calc(100% / 6 - 2px) calc(100% / 6));
+}
+/* One pass of light across the card you are pointing at. The frame already
+   clips to a rounded square, so the sweep needs no mask of its own. */
+.work-section .project-open::after{
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -40%;
+  width: 40%;
+  height: 100%;
+  pointer-events: none;
+  background: linear-gradient(100deg, transparent, rgb(255 255 255 / .16), transparent);
+  transform: skewX(-16deg);
+  opacity: 0;
+  transition: transform .9s var(--ease-out), opacity .5s ease;
+}
+.work-section .project-card:hover .project-open::after,
+.work-section .project-card:focus-within .project-open::after{
+  opacity: 1;
+  transform: skewX(-16deg) translateX(360%);
+}
+
+/* ============================================================
+   Services
+   ============================================================ */
+/* Disclosures animate open where the browser can do it. ::details-content
+   is the only way to transition a <details> without scripting it; browsers
+   without it simply keep the instant open they have today. */
+@supports (interpolate-size: allow-keywords){
+  :root{interpolate-size: allow-keywords}
+  .service-row::details-content,
+  .faq-list details::details-content{
+    block-size: 0;
+    overflow: hidden;
+    transition: block-size .45s var(--ease-out), content-visibility .45s allow-discrete;
+  }
+  .service-row[open]::details-content,
+  .faq-list details[open]::details-content{block-size: auto}
+}
+
+/* The row number becomes a tile, and lights up when its row is open, so the
+   two states are told apart by more than the arrow. */
+.service-row .service-num{
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  border: 1px solid rgb(255 255 255 / .16);
+  background: linear-gradient(160deg, rgb(226 236 255 / .14), rgb(226 236 255 / .04));
+  color: var(--accent);
+  font: 700 10px/1 var(--font);
+  letter-spacing: .06em;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .2);
+  transition: background .3s, border-color .3s, color .3s;
+}
+.service-row[open] .service-num{
+  background: linear-gradient(160deg, rgb(142 160 255 / .32), rgb(142 160 255 / .1));
+  border-color: rgb(159 176 255 / .5);
+  color: #eaf0ff;
+}
+/* v2 hovers this to the brand cobalt, which is only ~3.4:1 on navy. It
+   clears AA as display type, but the lighter periwinkle is the same idea
+   without the contrast debt. */
+.services-section .service-row summary:hover{color: #cfd8ff}
+
+/* ============================================================
+   Approach
+   ============================================================ */
+/* The symbol was a bare inline SVG: with a viewBox and no width or height
+   it sized itself to the flex line, so a 48-unit glyph was painting at the
+   full width of the card. Given a tile and a definite size it reads as the
+   restrained icon DESIGN.md asks for. */
+.approach-section .process-symbol{
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  margin: auto 0 26px;
+  border-radius: 17px;
+  border: 1px solid rgb(255 255 255 / .14);
+  background: linear-gradient(160deg, rgb(226 236 255 / .15), rgb(226 236 255 / .04));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .26), 0 16px 34px -20px rgb(96 128 224 / .8);
+  color: var(--glass-accent);
+  transition: border-color .35s, box-shadow .35s;
+}
+.approach-section .process-symbol svg{width: 28px;height: 28px;display: block}
+.approach-section .process-card:hover .process-symbol{
+  border-color: rgb(159 176 255 / .45);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .4), 0 20px 40px -20px rgb(96 128 224 / .95);
+}
+
+/* ============================================================
+   Statement band
+   ============================================================ */
+.statement{position: relative}
+@media (prefers-reduced-motion: no-preference){
+  .statement::before{
+    content: "";
+    position: absolute;             /* out of flow, so not a flex item */
+    inset: -20%;
+    background:
+      radial-gradient(40% 60% at 25% 30%, rgb(142 160 255 / .18), transparent 70%),
+      radial-gradient(36% 54% at 82% 76%, rgb(120 92 255 / .16), transparent 72%);
+    filter: blur(40px);
+    animation: auroraDrift 40s var(--ease-out) infinite alternate-reverse;
+  }
+}
+.statement p:not(.eyebrow){
+  max-width: 26ch;
+  letter-spacing: -.05em;
+}
+/* The bleeding ✳ was tinted for a lavender band and is nearly gone on navy. */
+.statement-flower{color: rgb(159 176 255 / .10)}
+
+/* ============================================================
+   About
+   ============================================================ */
+/* The portrait's offset block was a solid slab of pale lavender, sized for
+   the cream canvas. Translucent, it keeps the architectural offset the
+   design system asks for without becoming the brightest object on screen. */
+.about-image{
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / .22),
+    30px 30px 0 rgb(142 160 255 / .18),
+    0 34px 70px -34px rgb(96 128 224 / .5);
+}
+.about-image:hover{
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / .4),
+    34px 34px 0 rgb(142 160 255 / .26),
+    var(--glass-lift-lg);
+}
+/* The corner tag sits on the photograph, so it takes the dark-glass recipe
+   the project captions use rather than a flat brand fill. */
+.about-image-tag{
+  border-radius: 999px;
+  padding: 10px 16px;
+  border: 1px solid rgb(255 255 255 / .2);
+  background-color: rgb(7 10 20 / .58);
+  background-image: var(--glass-fill-dark), var(--glass-grain);
+  background-size: 100% 100%, 160px 160px;
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  backdrop-filter: blur(18px) saturate(160%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .28), 0 14px 30px -18px rgb(0 0 0 / .9);
+  color: #fff;
+}
+
+/* ============================================================
+   FAQ and contact
+   ============================================================ */
+.faq-list details{border-bottom-color: rgb(255 255 255 / .1)}
+.faq-list summary:hover{color: #fff}
+.faq-list details[open] summary{color: var(--accent-bright)}
+
+/* Autofill paints its own opaque cream, which is the one place the palette
+   cannot reach. The inset shadow fills the field from the inside, so the
+   yellow never shows and the label colour survives it. */
+.contact-form input:-webkit-autofill,
+.contact-form input:-webkit-autofill:focus,
+.contact-form textarea:-webkit-autofill,
+.contact-form select:-webkit-autofill{
+  -webkit-text-fill-color: #fff;
+  caret-color: #fff;
+  -webkit-box-shadow: 0 0 0 1000px rgb(12 18 38) inset;
+}
+
+/* A single pass of light across the filled buttons on hover. The sweep is a
+   positioned pseudo, so it paints over the label — which is the point:
+   it reads as light travelling across the glass, not as a wash behind it. */
+.button-dark,
+.button-blue,
+.cs-discuss{position: relative;overflow: hidden}
+.header-cta{position: relative}
+.button-dark::after,
+.button-blue::after,
+.cs-discuss::after,
+.header-cta::after{
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -45%;
+  width: 40%;
+  height: 100%;
+  pointer-events: none;
+  background: linear-gradient(100deg, transparent, rgb(255 255 255 / .32), transparent);
+  transform: skewX(-16deg);
+  transition: transform .8s var(--ease-out);
+}
+/* The header CTA carries its divider in ::before outside its own box, so it
+   cannot use overflow:hidden to clip the sweep — the sweep clips itself. */
+.header-cta::after{clip-path: inset(0 round 999px)}
+.button-dark:hover::after,
+.button-blue:hover::after,
+.cs-discuss:hover::after,
+.header-cta:hover::after{transform: skewX(-16deg) translateX(360%)}
+
+/* ============================================================
+   Footer
+   ============================================================ */
+@supports ((-webkit-background-clip: text) or (background-clip: text)){
+  .footer-menu .footer-logo{
+    background-image: linear-gradient(178deg, #ffffff 12%, #c3cbff 58%, var(--accent) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .footer-menu .footer-logo span{-webkit-text-fill-color: var(--accent)}
+}
+
+/* ============================================================
+   Case studies
+   ------------------------------------------------------------
+   The six works/ pages are generated, so their treatment lives
+   here rather than in the template. Same material as the home
+   page, sized for reading.
+   ============================================================ */
+.cs-back{
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 16px;
+  border-radius: 999px;
+  border: 1px solid rgb(255 255 255 / .14);
+  background: rgb(226 236 255 / .06);
+  color: #c8d2f0;
+  transition: background .25s, border-color .25s, color .25s, transform .25s var(--ease-out);
+}
+.cs-back:hover{
+  background: rgb(226 236 255 / .13);
+  border-color: rgb(159 176 255 / .5);
+  color: #fff;
+  transform: translateX(-3px);
+}
+.cs-back span{color: var(--accent)}
+
+/* The metadata table was four hairlines on the canvas. As a sheet with
+   hairlines inside it, it reads as one object with rows in it. */
+.cs-meta{
+  border: 1px solid rgb(255 255 255 / .12);
+  border-radius: 18px;
+  padding: 4px clamp(14px, 2vw, 20px);
+  background-color: rgb(226 236 255 / .03);
+  background-image: var(--glass-fill-dark), var(--glass-grain);
+  background-size: 100% 100%, 160px 160px;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .18), 0 24px 54px -30px rgb(0 0 0 / .8);
+}
+.cs-meta>div:last-child{border-bottom: 0}
+.cs-meta dt{
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: .14em;
+  color: #97a3c4;
+}
+
+/* Full-bleed stays; a scrim at the foot of the frame ties the photograph
+   into the canvas instead of butting it against the next section. */
+.cs-hero{position: relative}
+.cs-hero::after{
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 36%;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent, rgb(7 11 24 / .5));
+}
+
+/* Scope rows: a lit dot carries the list, and the row answers the pointer
+   with the same 1px nudge the services rows use. */
+.cs-scope-list li{
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  transition: color .25s, padding-left .3s var(--ease-out);
+}
+.cs-scope-list li::before{
+  content: "";
+  flex: 0 0 auto;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 10px rgb(142 160 255 / .8);
+}
+.cs-scope-list li:hover{color: #fff;padding-left: 8px}
+
+/* A typographic quotation mark bleeding off the top corner of the panel. */
+.cs-quote{position: relative;overflow: hidden}
+.cs-quote::after{
+  content: "\201D";
+  position: absolute;
+  right: 12px;
+  top: -34px;
+  font-family: var(--serif);
+  font-size: 150px;
+  line-height: 1;
+  color: rgb(255 255 255 / .07);
+  pointer-events: none;
+}
+
+/* The cobalt band gets a direction, so it is a gradient rather than a
+   block of brand colour, and the statement is set balanced. */
+.cs-band{
+  position: relative;
+  overflow: hidden;
+  background-image: linear-gradient(120deg, #101a3c 0%, #2a3ea8 46%, #455cf7 100%);
+}
+@media (prefers-reduced-motion: no-preference){
+  .cs-band::before{
+    content: "";
+    position: absolute;
+    inset: -25%;
+    background:
+      radial-gradient(38% 60% at 18% 24%, rgb(198 212 255 / .22), transparent 70%),
+      radial-gradient(34% 54% at 84% 78%, rgb(120 92 255 / .24), transparent 72%);
+    filter: blur(38px);
+    animation: auroraDrift 38s var(--ease-out) infinite alternate;
+  }
+}
+.cs-statement{text-wrap: balance}
+
+/* The spec-list label is the only place the mono face was asked for and not
+   given; it gets a lead-in rule so it reads as a sheet heading. */
+.cs-page .cs-label{
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: .18em;
+  color: var(--accent);
+}
+.cs-page .cs-label::before{
+  content: "";
+  width: 16px;
+  height: 1px;
+  background: linear-gradient(90deg, var(--accent), transparent);
+}
+.cs-spec-list li{font-size: 11.5px;letter-spacing: .04em}
+
+.cs-next-link{
+  display: inline-flex;
+  align-items: center;
+  padding: 12px 22px;
+  border-radius: 999px;
+  border: 1px solid rgb(255 255 255 / .14);
+  background: rgb(226 236 255 / .05);
+  transition: background .3s, border-color .3s, transform .3s var(--ease-out);
+}
+.cs-next-link:hover{
+  background: rgb(226 236 255 / .12);
+  border-color: rgb(159 176 255 / .45);
+  transform: translateY(-2px);
+}
+.cs-next-link span{transition: transform .3s var(--ease-out)}
+
+/* ============================================================
+   Reduced transparency
+   ------------------------------------------------------------
+   A visitor who has asked the OS for less transparency gets the
+   surfaces opaque rather than merely less blurred: the material
+   keeps its rim and its glow, it just stops being see-through.
+   ============================================================ */
+@media (prefers-reduced-transparency: reduce){
+  .glass,
+  .filter-bar,
+  .contact-form,
+  .footer-status,
+  .social-fab,
+  .work-section .rail-status,
+  .work-section .project-meta,
+  .cs-tile,
+  .cs-spec,
+  .cs-quote,
+  .site-top .site-header,
+  .mobile-menu:not([hidden]){
+    background-color: rgb(12 17 34 / .94);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .project-meta{background-color: rgb(7 10 20 / .92)}
+}
+
+/* ---------- Reduced motion ----------
+   The aurora and the spotlight are already gone — the first is inside a
+   no-preference query and the second is never switched on by app.js. What
+   is left is the sweep on the cards and the lifts on the case-study links. */
+@media (prefers-reduced-motion: reduce){
+  .button-dark:hover::after,
+  .button-blue:hover::after,
+  .cs-discuss:hover::after,
+  .header-cta:hover::after{transform: skewX(-16deg)}
+  .work-section .project-card:hover .project-open::after,
+  .work-section .project-card:focus-within .project-open::after{opacity: 0}
+  .cs-back:hover,
+  .cs-next-link:hover{transform: none}
+  .cs-scope-list li:hover{padding-left: 0}
 }

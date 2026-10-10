@@ -602,3 +602,82 @@ if (!depthQuery.matches) {
   window.addEventListener('resize', queueDepth, { passive: true });
   updateDepth();
 }
+
+/* ---------- Reading progress ----------
+   A hairline along the very top of the viewport. It is deliberately not a
+   second scroll listener doing its own maths per event: the listener only
+   asks for a frame, and the frame is the only thing that reads layout.
+   The bar is decorative, so CSS hides it under reduced motion. */
+const progressFill = document.getElementById('scroll-progress-bar');
+if (progressFill) {
+  let progressQueued = false;
+
+  const paintScrollProgress = () => {
+    progressQueued = false;
+    const scrollable = document.documentElement.scrollHeight - window.innerHeight;
+    const ratio = scrollable > 0 ? Math.min(1, Math.max(0, window.scrollY / scrollable)) : 0;
+    progressFill.style.transform = `scaleX(${ratio.toFixed(4)})`;
+  };
+
+  const queueProgress = () => {
+    if (progressQueued) return;
+    progressQueued = true;
+    requestAnimationFrame(paintScrollProgress);
+  };
+
+  window.addEventListener('scroll', queueProgress, { passive: true });
+  window.addEventListener('resize', queueProgress, { passive: true });
+  paintScrollProgress();
+}
+
+/* ---------- Hero spotlight ----------
+   A soft pool of light that follows the mouse across the hero. Only on a
+   real pointer — a touch device has no hover to answer, and a stray
+   touchmove would leave a light stuck where the finger lifted. The value is
+   published as a percentage so CSS decides the size, colour and falloff;
+   one rect read per frame at most. */
+const heroScene = document.querySelector('.hero-v2');
+if (heroScene) {
+  const spotQuery = window.matchMedia('(hover: hover) and (pointer: fine)');
+  let spotQueued = false;
+  let spotClientX = 0;
+  let spotClientY = 0;
+
+  const paintSpot = () => {
+    spotQueued = false;
+    const rect = heroScene.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const x = ((spotClientX - rect.left) / rect.width) * 100;
+    const y = ((spotClientY - rect.top) / rect.height) * 100;
+    heroScene.style.setProperty('--spot-x', `${x.toFixed(2)}%`);
+    heroScene.style.setProperty('--spot-y', `${y.toFixed(2)}%`);
+  };
+
+  const onSpotMove = event => {
+    if (event.pointerType && event.pointerType !== 'mouse') return;
+    spotClientX = event.clientX;
+    spotClientY = event.clientY;
+    heroScene.classList.add('has-spot');
+    if (spotQueued) return;
+    spotQueued = true;
+    requestAnimationFrame(paintSpot);
+  };
+
+  const onSpotLeave = () => heroScene.classList.remove('has-spot');
+
+  const enableSpot = () => {
+    if (!spotQuery.matches || reducedMotion.matches) return;
+    heroScene.removeEventListener('pointermove', onSpotMove);
+    heroScene.addEventListener('pointermove', onSpotMove);
+    heroScene.addEventListener('pointerleave', onSpotLeave);
+  };
+
+  const disableSpot = () => {
+    heroScene.removeEventListener('pointermove', onSpotMove);
+    heroScene.removeEventListener('pointerleave', onSpotLeave);
+    onSpotLeave();
+  };
+
+  enableSpot();
+  reducedMotion.addEventListener('change', () => (reducedMotion.matches ? disableSpot() : enableSpot()));
+}
