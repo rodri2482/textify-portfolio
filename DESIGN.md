@@ -59,6 +59,20 @@ The current visual layer. It lives entirely in `liquid.css`, loaded last, so the
 - **Backdrop roots:** an ancestor with `opacity < 1`, `filter`, `mask` or `will-change` on those truncates a child's `backdrop-filter`. The scroll reveal therefore animates `blur`, never `opacity`, so at rest the backdrop root is gone and the glass actually blurs.
 - **Fallback:** without `backdrop-filter` support the tokens drop to an opaque fill, so contrast never degrades to translucent-on-photography.
 
+## Third pass — the 2026 refinement
+
+The newest block, at the end of `liquid.css`. Additive like the layer around it: delete the block and the site returns to the second-pass material with nothing else to change.
+
+- **Foundation.** `--font-mono` and `--glass-accent` were referenced by the rail counter, the case-study spec list and the approach icons but never declared, so all three resolved to the initial value and fell back to the body face. Both are now declared. `color-scheme: dark` reaches the last of the light browser chrome — select popups, the date picker, autofill.
+- **Type.** The display italic (`em` in every headline, the case-study statement, the spec word) is a gradient clipped to the text rather than a flat periwinkle. Headlines are balanced. Section eyebrows are chips. The eyebrow rule had been repinned to `--ink-surface` by the navy block — the canvas colour — which made it 26px of invisible; it is a gradient that fades out instead.
+- **Hero.** An aurora field and a pointer spotlight, both pseudo-elements on `.hero-v2`, so the atmosphere costs no markup. The aurora sits above the receding grid and below the portrait; the spotlight is painted from two custom properties `app.js` writes on the hero, at most one rect read per frame, and never on a touch device. The portrait gains a cool rim light. An availability chip sits with the hero actions.
+- **Chrome.** A 2px reading-progress hairline above the sticky pill, and a ticker that is a hairlined, edge-masked strip rather than an opaque band cutting the page in two.
+- **Rail.** The progress bar is cut into six cells, so the wait reads as a counter as well as a timer. The card under the pointer takes one pass of light.
+- **Sections.** `<details>` rows animate open through `::details-content` where the browser supports it and stay instant where it does not. Service numbers are tiles that light with their row. The approach icons are glass tiles at a definite size — as bare inline SVGs with a `viewBox` and no `width` they were sizing themselves to the flex line. The statement band and the case-study band carry a drifting aurora; the footer wordmark is a vertical gradient.
+- **Case studies.** Metadata is a sheet rather than four rules on the canvas, the hero frame gets a scrim, scope rows get a lit dot, the pull-quote gets a bleeding quotation mark, next-project is a pill. The spec panel was still describing the cream theme — "Surfaces / #F4F1E9 · #FCF9F1", "no shadows" — and now describes the build.
+- **Reduced transparency.** `prefers-reduced-transparency` drops every glass surface to opaque and keeps the rim and the glow, so the material degrades rather than disappearing.
+- **Motion.** The aurora exists only inside `prefers-reduced-motion: no-preference`, the spotlight is never switched on under reduce, and the new sweeps and lifts are reset in the reduced-motion block.
+
 ## Case studies
 Each project has a dedicated page under `works/` rather than sharing one modal. The page rhythm is: back link, asymmetric title block with a metadata table, full-bleed hero in a rigid frame, a scope list against editorial prose with a Playfair pull-quote, a square detail tile paired with a typographic "impression" panel, a full-width cobalt statement band, then a next-project link and an inquiry button.
 

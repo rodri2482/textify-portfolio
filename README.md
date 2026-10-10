@@ -6,6 +6,30 @@ A responsive ecommerce portfolio built around the supplied founder portrait and 
 
 Open `index.html` in a browser, or upload the entire folder to a static host. All site code and image assets are included. Google Fonts require an internet connection; system fallbacks are provided.
 
+Or serve the folder over HTTP, which is what the deployed site does:
+
+```
+python3 -m http.server 8000
+```
+
+## Publishing
+
+The site is published with GitHub Pages from the **`main` branch, root folder**, at:
+
+**https://rodri2482.github.io/textify-portfolio/**
+
+Every push to `main` triggers a rebuild, and the change is usually live within a minute. To publish, open a pull request, merge it to `main`, and wait for the build. Nothing is built at deploy time — the six case-study pages in `works/` are generated locally with `node tools/build-works.mjs` and committed, which is why the folder can be published straight from the branch.
+
+To check what is live and whether it built:
+
+```
+gh api repos/rodri2482/textify-portfolio/pages/builds/latest
+```
+
+The `commit` in that response is the commit currently published; compare it with `git rev-parse origin/main` to see whether a change has gone out yet.
+
+`.nojekyll` is present so GitHub serves the files exactly as they are, with no Jekyll processing. Every path in the markup is relative, so the site works at the project subpath above and at a custom domain without changes — add a `CNAME` file at the root to use one.
+
 ## Included work
 
 - [LauraVogue](https://lauravogue.com/) — `works/lauravogue.html`
@@ -35,6 +59,8 @@ Each store currently supplies one campaign image, so the square detail tile re-c
 
 The hero layers the supplied portrait over a subtle dark gradient, with gentle portrait movement. The abstract rings and floating badge have been removed. Sections reveal on scroll. Reduced-motion settings disable decorative animation. Filters, project panels, service and FAQ disclosures, and the mobile menu are interactive.
 
+`app.js` adds two things of its own: a reading-progress hairline, which reads layout once per frame at most, and a hero spotlight driven by two custom properties, switched off for touch pointers and under reduced motion.
+
 ## The project rail
 
 The rail runs itself: it holds each project for `data-dwell="120000"` (two minutes) then glides to the next over `data-glide="1100"`, both set on `#project-grid`. A progress line above the rail and a pause control under it show where it is in the wait; hovering the rail, touching it, pressing an arrow key, switching tabs or filtering all interrupt the timer and start the wait again when you let go. Arrow keys move one project at a time and wrap at both ends. The mouse can also drag the rail, which leaves the native touch scrolling alone and steps over the case-study link once a drag has clearly begun.
@@ -48,6 +74,8 @@ Looping is done with copies of the cards at each end of the strip, not by rewind
 `liquid.css` carries the current look: a dark-navy canvas with a Liquid Glass treatment, and scroll-driven storytelling animations where the browser supports `animation-timeline: view()` (with the IntersectionObserver reveal as the fallback elsewhere). It is loaded last and is entirely self-contained — delete its single `<link>` to fall back to the editorial system in `styles.css` + `v2.css`.
 
 Two gotchas it works around, both documented inline: an ancestor with `opacity < 1` or `filter` becomes a backdrop root and silently kills a child's `backdrop-filter`, and pale glass behind light label text is unreadable, so dark-surface components take a dark-glass variant.
+
+The third-pass block at the end of the file refines that material without replacing it: gradient display italics, chip eyebrows, a reading-progress hairline, an aurora field and pointer spotlight in the hero (pseudo-elements, so no markup), six-cell rail progress, animated disclosures via `::details-content`, and the same treatment across the six case studies. It is one contiguous block — delete from the "Third pass" banner to the end of the file and the second-pass look comes back. Full notes in `DESIGN.md`.
 
 ## LinkedIn
 
