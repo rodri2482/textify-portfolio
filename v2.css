@@ -27,6 +27,10 @@ body{overflow-x:hidden}
 .hero-v2 .hero-visual-label span{font-size:25px;color:#9eabff}
 .hero-v2 .portrait-halo{position:absolute;left:5%;right:2%;bottom:3%;height:72%;border-radius:50% 50% 0 0;background:radial-gradient(circle at 50% 42%,#8e9aff77,#5a6dd73d 42%,transparent 73%);filter:blur(16px)}
 .hero-v2 .portrait-stage{inset:auto -7% -10% -2%;height:105%;overflow:hidden;display:flex;align-items:end;justify-content:center}
+/* The hero portrait is a <picture> (WebP with a PNG fallback). display:contents
+   dissolves the wrapper so the fallback <img> keeps the exact layout it had
+   as a direct flex child of the stage. */
+.hero-v2 .portrait-stage picture{display:contents}
 .hero-v2 .portrait-stage:after{background:linear-gradient(0deg,#101116 0%,transparent 22%)}
 .hero-v2 .portrait-stage img{height:100%;width:auto;max-width:none;object-fit:contain;object-position:center bottom;filter:grayscale(1) contrast(1.07) drop-shadow(0 0 34px #05050977);animation:portraitFloat 7s ease-in-out infinite;transform-origin:50% 100%}
 .hero-v2 .orbit-tag{top:21%;right:6%;width:100px;height:100px;background:#ced4ff;color:#151828;box-shadow:0 10px 35px #0008;transform:rotate(13deg);font-size:52px;letter-spacing:-.12em;animation:badgeFloat 8s ease-in-out infinite}
@@ -280,10 +284,18 @@ body.menu-open{overflow:hidden}
 .mobile-menu-foot a:hover{color:var(--blue)}
 .mobile-menu:not([hidden]){animation:menuDrop .32s cubic-bezier(.2,.7,.1,1) both}
 @keyframes menuDrop{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:none}}
+/* Closing plays the reverse drop, and app.js hides the panel once it has
+   finished, so the menu no longer vanishes the instant the toggle is clicked.
+   Same specificity as the :not([hidden]) rules above — source order decides,
+   so these come later. */
+.mobile-menu.is-closing{animation:menuRise .26s cubic-bezier(.2,.7,.1,1) both}
+.menu-backdrop.is-closing{animation:fadeOut .26s ease both}
+@keyframes menuRise{from{opacity:1;transform:none}to{opacity:0;transform:translateY(-14px)}}
+@keyframes fadeOut{from{opacity:.55}to{opacity:0}}
 
 /* Anchor the panel to the real header bottom instead of a hardcoded offset:
    styles.css assumes a 100px announcement+header stack, but v2.css resizes the
    header to 78px, which left the panel overlapping by 8px. */
 @media(max-width:900px){.menu-backdrop{display:block}.mobile-menu:not([hidden]){position:fixed;top:var(--menu-top,100px);left:0;right:0;z-index:21}}
 @media(min-width:901px){.menu-backdrop{display:none!important}}
-@media(prefers-reduced-motion:reduce){.mobile-menu:not([hidden]),.menu-backdrop:not([hidden]){animation:none}.menu-backdrop:not([hidden]){opacity:.55}}
+@media(prefers-reduced-motion:reduce){.mobile-menu:not([hidden]),.menu-backdrop:not([hidden]),.mobile-menu.is-closing,.menu-backdrop.is-closing{animation:none}.menu-backdrop:not([hidden]){opacity:.55}}

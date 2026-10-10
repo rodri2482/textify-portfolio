@@ -48,6 +48,8 @@ Depth is CSS perspective and Z-offsets only — no WebGL, no extra payload, and 
 ## Content integrity
 Only the six user-supplied sites are shown as live portfolio work: Ecoraftt, LauraVogue, Dewlip, Alma Valenti, Renova Fashion, and Peter Oliveira. No unverified statistics, testimonials, or fabricated client results. The static contact form opens an email draft; it does not send by itself.
 
+The home page carries a word-of-mouth section, and it ships **empty on purpose**: the quote block is an explicit, bracketed placeholder, not an invented testimonial. It stays a placeholder until a real client quote — in writing, with name and brand — is dropped in; publishing fabricated social proof would breach this rule.
+
 ## Liquid glass
 The current visual layer. It lives entirely in `liquid.css`, loaded last, so the whole aesthetic reverts by deleting a single `<link>`.
 
