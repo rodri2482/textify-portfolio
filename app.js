@@ -10,17 +10,37 @@ const mobileMenu = document.getElementById('mobile-menu');
 const menuBackdrop = document.getElementById('menu-backdrop');
 const mobileQuery = window.matchMedia('(max-width: 900px)');
 
+/* Closing is animated too: the panel plays a short rise-and-fade (v2.css,
+   .is-closing) and only leaves the layout when it has finished, instead of
+   vanishing the instant the toggle is clicked. Under reduced motion the
+   wait is skipped and the panel hides immediately. */
+const MENU_CLOSE_MS = 260;
+let menuCloseTimer = 0;
+
 function setMenu(open) {
   if (open && !mobileQuery.matches) return;
+  clearTimeout(menuCloseTimer);
   if (open) {
     // Measured at open time: the header is not fixed, so its viewport bottom
     // is the only correct offset while the page is scroll-locked.
     mobileMenu.style.setProperty('--menu-top', `${Math.round(siteHeader.getBoundingClientRect().bottom)}px`);
+    mobileMenu.hidden = false;
+    menuBackdrop.hidden = false;
+    mobileMenu.classList.remove('is-closing');
+    menuBackdrop.classList.remove('is-closing');
+  } else {
+    mobileMenu.classList.add('is-closing');
+    menuBackdrop.classList.add('is-closing');
+    const delay = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : MENU_CLOSE_MS;
+    menuCloseTimer = setTimeout(() => {
+      mobileMenu.hidden = true;
+      menuBackdrop.hidden = true;
+      mobileMenu.classList.remove('is-closing');
+      menuBackdrop.classList.remove('is-closing');
+    }, delay);
   }
   menuButton.setAttribute('aria-expanded', String(open));
   menuButton.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
-  mobileMenu.hidden = !open;
-  menuBackdrop.hidden = !open;
   document.body.classList.toggle('menu-open', open);
 }
 
@@ -544,14 +564,14 @@ if (form) {
     const data = new FormData(form);
     const subject = `Textify project inquiry — ${data.get('type')}`;
     const body = `Name: ${data.get('name')}\nEmail: ${data.get('email')}\nProject type: ${data.get('type')}\n\nProject details:\n${data.get('message')}`;
-    status.textContent = 'Opening your email app with your inquiry ready to send.';
+    status.textContent = `Opening your email app with your inquiry ready to send — if nothing opens, write to ${CONTACT_EMAIL} directly.`;
     window.location.href = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   });
 }
 
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 if (!reducedMotion.matches) {
-  const revealTargets = document.querySelectorAll('.section-heading, .project-card, .service-row, .process-card, .about-grid, .contact-grid');
+  const revealTargets = document.querySelectorAll('.section-heading, .project-card, .service-row, .process-card, .about-grid, .testimonial-grid, .contact-grid');
   revealTargets.forEach((element, index) => {
     element.classList.add('reveal-ready');
     element.style.setProperty('--reveal-delay', `${(index % 3) * 85}ms`);

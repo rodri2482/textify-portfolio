@@ -1466,6 +1466,7 @@ h1, h2, h3{text-wrap: balance}
   .section-heading h2 em,
   .about-copy h2 em,
   .faq-grid h2 em,
+  .testimonial-grid h2 em,
   .contact-copy h2 em,
   .statement p em,
   .cs-headline em,
@@ -1491,6 +1492,7 @@ h1, h2, h3{text-wrap: balance}
 .section-heading .eyebrow,
 .about-copy .eyebrow,
 .faq-grid .eyebrow,
+.testimonial-grid .eyebrow,
 .contact-copy .eyebrow,
 .statement .eyebrow{
   display: inline-flex;
@@ -1842,6 +1844,86 @@ h1, h2, h3{text-wrap: balance}
 .header-cta:hover::after{transform: skewX(-16deg) translateX(360%)}
 
 /* ============================================================
+   Hover contrast
+   ------------------------------------------------------------
+   Five hover states landed below the contrast they need on the
+   navy canvas, and two of them were unreadable outright:
+
+   - .text-link hovers to the brand cobalt (#455cf7), about 3.7:1
+     here — under the 4.5:1 a 13px bold label needs.
+   - .header-cta hovers to #171820, near-black on a near-black
+     canvas: the pill merges into the page (its edge drops under
+     the 3:1 a control needs to read as an object).
+   - .button-blue hovers to the darker cobalt #2745d7, whose edge
+     against the canvas is about 2.6:1 — same problem.
+   - .mobile-menu-cta hovers to var(--ink), which this theme
+     re-pins to near-white, over its own white label: the CTA's
+     text disappeared on hover.
+   - .social-fab hovers to a light fill but keeps its near-white
+     icon, so the glyph vanished into it.
+
+   The fix hovers to a lighter cobalt (#4e63f8 — white label 4.7:1,
+   edge against the canvas 4.0:1), flips the fab's icon to the
+   canvas colour on its light hover fill, and gives the footer's
+   back-to-top ring the accent fill. Figures are rounded; recompute
+   if the canvas changes.
+   ============================================================ */
+.text-link:hover{color: var(--accent-bright);border-color: var(--accent)}
+.header-cta:hover{background: #4e63f8;border-color: #4e63f8}
+.button-blue:hover{background: #4e63f8}
+.mobile-menu-cta:hover{background: #4e63f8;border-color: #4e63f8 !important}
+.social-fab:hover{color: #0b1020}
+.footer-back:hover span{background: var(--accent-deep);border-color: var(--accent-deep);color: #fff}
+
+/* ============================================================
+   Testimonials
+   ------------------------------------------------------------
+   The word-of-mouth section ships as an explicit placeholder
+   slot — see the comment in index.html and the content-integrity
+   rule in DESIGN.md — so the glass panel is ready for the first
+   real client quote. It sits on flat navy, so it takes the fill,
+   grain and glow without a backdrop-filter, the same recipe as
+   the approach cards: there is nothing behind it to blur.
+   ============================================================ */
+.testimonial-section{background: var(--navy-1)}
+.testimonial-quote{
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  margin: 0;
+  padding: clamp(26px, 3.4vw, 46px);
+  border: 1px solid rgb(255 255 255 / .10);
+  border-radius: var(--glass-r);
+  background-color: rgb(12 17 34 / .46);
+  background-image: var(--glass-fill-dark), var(--glass-grain);
+  background-size: 100% 100%, 160px 160px;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .16), 0 22px 48px -32px rgb(0 0 0 / .8);
+}
+/* The sheen sits above the fill and under the text: z-index -1
+   inside the panel's own stacking context. */
+.testimonial-quote::before{
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--glass-sheen);
+  pointer-events: none;
+}
+/* The same bleeding quotation mark the case-study pull-quotes carry. */
+.testimonial-quote::after{
+  content: "\201C";
+  position: absolute;
+  left: 16px;
+  top: -34px;
+  font-family: var(--serif);
+  font-size: 150px;
+  line-height: 1;
+  color: rgb(255 255 255 / .07);
+  pointer-events: none;
+}
+
+/* ============================================================
    Footer
    ============================================================ */
 @supports ((-webkit-background-clip: text) or (background-clip: text)){
@@ -2018,6 +2100,7 @@ h1, h2, h3{text-wrap: balance}
   .cs-tile,
   .cs-spec,
   .cs-quote,
+  .testimonial-quote,
   .site-top .site-header,
   .mobile-menu:not([hidden]){
     background-color: rgb(12 17 34 / .94);

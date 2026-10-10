@@ -9,6 +9,18 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
+/* Intrinsic size of every asset, so the generated <img> tags can carry
+   width/height and the browser can reserve the box before the file lands. */
+const imageSizes = {
+  'laura.jpg': [1600, 794],
+  'ecoraft.jpg': [800, 800],
+  'dewlip.jpg': [1376, 768],
+  'alma.jpg': [732, 1300],
+  'renova-women.jpg': [800, 1200],
+  'renova.jpg': [800, 534],
+  'peter.jpg': [800, 800]
+};
+
 const projects = [
   {
     slug: 'lauravogue',
@@ -179,7 +191,7 @@ const head = (p, depth) => `<!doctype html>
     </section>
 
     <figure class="cs-hero">
-      <img src="${depth}assets/${p.image}" alt="${p.title} ${p.kicker.toLowerCase()} campaign imagery for Textify" fetchpriority="high">
+      <img src="${depth}assets/${p.image}" alt="${p.title} ${p.kicker.toLowerCase()} campaign imagery for Textify" width="${imageSizes[p.image][0]}" height="${imageSizes[p.image][1]}" fetchpriority="high" decoding="async">
     </figure>
 
     <section class="story cs-body">
@@ -201,7 +213,7 @@ ${p.scope.map(s => `            <li>${s}</li>`).join('\n')}
     <section class="story cs-pair">
       <div class="wrap cs-pair-grid">
         <figure class="cs-tile">
-          <span class="cs-tile-crop${p.secondImage ? '' : ' cs-tile-crop--detail'}"><img src="${depth}assets/${p.secondImage || p.image}" alt="${p.title} ${p.secondImage ? 'storefront presentation' : 'product detail'}" loading="lazy"></span>
+          <span class="cs-tile-crop${p.secondImage ? '' : ' cs-tile-crop--detail'}"><img src="${depth}assets/${p.secondImage || p.image}" alt="${p.title} ${p.secondImage ? 'storefront presentation' : 'product detail'}" width="${imageSizes[p.secondImage || p.image][0]}" height="${imageSizes[p.secondImage || p.image][1]}" loading="lazy" decoding="async"></span>
           <figcaption>${p.captions[0]}</figcaption>
         </figure>
         <figure class="cs-tile cs-tile--spec">

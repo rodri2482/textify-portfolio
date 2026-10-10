@@ -51,7 +51,7 @@ node tools/build-works.mjs
 
 It writes every page in `works/`, so never edit those files directly — they will be overwritten. It also emits `tools/card-links.txt`, a reference of the card markup used on the home page.
 
-Case-study copy stays descriptive about what the design covers. No statistics, conversion figures, testimonials, awards or client quotes appear anywhere, per the content-integrity rule in `DESIGN.md`.
+Case-study copy stays descriptive about what the design covers. No statistics, conversion figures, awards or fabricated client results appear anywhere, per the content-integrity rule in `DESIGN.md`. The one exception is deliberate: the home page carries a **word-of-mouth section that ships as an explicit placeholder slot** (marked in the markup) rather than an invented quote. Fill it with a quote a client actually said, with their name and brand in writing, before publishing any attribution.
 
 Each store currently supplies one campaign image, so the square detail tile re-crops that frame rather than repeating it verbatim. Supplying two or three distinct frames per store would let the layout carry a full image set.
 
@@ -85,7 +85,13 @@ The hero is a six-plane CSS perspective scene and the portrait drifts as the her
 
 ## Contact
 
-The displayed address is `testimonyakinbinu490@gmail.com`. The form validates the fields, then opens the visitor's email app with a prefilled draft to that address. The visitor must send it from their email app; this static site has no server-side email service.
+The displayed address is `testimonyakinbinu490@gmail.com`. The form validates the fields, then opens the visitor's email app with a prefilled draft to that address. The visitor must send it from their email app; this static site has no server-side email service. The form also carries `action="mailto:…" method="post" enctype="text/plain"`, so with JavaScript disabled the browser still opens a prefilled draft — the script only replaces the raw `field=value` body with a labelled one.
+
+## Performance
+
+- The hero portrait (the largest asset and the LCP element) is served as WebP (`assets/founder-cutout.webp`, ~73 KB) through a `<picture>` element, with the original PNG kept as the fallback for browsers without WebP.
+- The about portrait is a JPEG (`assets/founder-portrait.jpg`); the campaign JPEGs are re-encoded, metadata-stripped and progressive.
+- Every `<img>` carries `width`/`height` (the browser reserves the box, so nothing shifts as images arrive) and `decoding="async"`; everything below the fold is `loading="lazy"`, and the two LCP images (hero portrait, case-study hero) are `fetchpriority="high"`.
 
 ## Design notes
 
